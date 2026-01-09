@@ -9,7 +9,7 @@ CREATE TABLE `machineApplications` (
 	`deviceSecret` varchar(128),
 	`description` text,
 	`status` enum('pending','approved','rejected') NOT NULL DEFAULT 'pending',
-	`submittedAt` timestamp NOT NULL DEFAULT (now()),
+	`submittedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`reviewedAt` timestamp,
 	`reviewerUserId` int,
 	`reviewNote` text,

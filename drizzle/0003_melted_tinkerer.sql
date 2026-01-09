@@ -4,7 +4,7 @@ CREATE TABLE `machineTelemetry` (
 	`machineId` int,
 	`seq` int NOT NULL,
 	`sentAt` bigint NOT NULL,
-	`receivedAt` timestamp NOT NULL DEFAULT (now()),
+	`receivedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`lat` decimal(10,6),
 	`lng` decimal(10,6),
 	`speedKph` decimal(6,2),

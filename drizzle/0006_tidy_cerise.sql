@@ -6,7 +6,7 @@ CREATE TABLE `diamondApplications` (
 	`contact` varchar(64),
 	`message` text,
 	`status` enum('pending','approved','rejected') NOT NULL DEFAULT 'pending',
-	`submittedAt` timestamp NOT NULL DEFAULT (now()),
+	`submittedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`reviewedAt` timestamp,
 	`reviewerUserId` int,
 	`reviewNote` text,
@@ -23,8 +23,8 @@ CREATE TABLE `membershipOrders` (
 	`paymentChannel` varchar(64),
 	`outTradeNo` varchar(128),
 	`paidAt` timestamp,
-	`createdAt` timestamp NOT NULL DEFAULT (now()),
-	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	`updatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 	`note` text,
 	CONSTRAINT `membershipOrders_id` PRIMARY KEY(`id`)
 );
@@ -44,7 +44,7 @@ CREATE TABLE `workOrders` (
 	`fixedPrice` decimal(10,2),
 	`biddingStartPrice` decimal(10,2),
 	`status` enum('open','pending','closed') NOT NULL DEFAULT 'open',
-	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	CONSTRAINT `workOrders_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint

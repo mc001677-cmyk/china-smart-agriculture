@@ -11,8 +11,8 @@ CREATE TABLE `fields` (
 	`avgYield` decimal(8,2),
 	`avgMoisture` decimal(5,2),
 	`ownerId` int,
-	`createdAt` timestamp NOT NULL DEFAULT (now()),
-	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	`updatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 	CONSTRAINT `fields_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
@@ -28,7 +28,7 @@ CREATE TABLE `files` (
 	`relatedFieldId` int,
 	`relatedMachineId` int,
 	`uploaderId` int,
-	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	CONSTRAINT `files_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
@@ -46,8 +46,8 @@ CREATE TABLE `machines` (
 	`engineHours` decimal(10,2),
 	`ownerId` int,
 	`assignedFieldId` int,
-	`createdAt` timestamp NOT NULL DEFAULT (now()),
-	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	`updatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 	CONSTRAINT `machines_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
@@ -63,7 +63,7 @@ CREATE TABLE `workLogs` (
 	`avgMoisture` decimal(5,2),
 	`fuelConsumed` decimal(8,2),
 	`pathGeoJson` text,
-	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	CONSTRAINT `workLogs_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint

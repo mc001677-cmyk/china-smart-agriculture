@@ -9,7 +9,7 @@ CREATE TABLE `machineListings` (
 	`contactPhone` varchar(32),
 	`description` text,
 	`status` enum('pending','approved','rejected') NOT NULL DEFAULT 'pending',
-	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`reviewedAt` timestamp,
 	`reviewerUserId` int,
 	`reviewNote` text,

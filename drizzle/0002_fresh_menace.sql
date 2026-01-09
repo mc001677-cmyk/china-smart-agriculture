@@ -13,8 +13,8 @@ CREATE TABLE `maintenanceLogs` (
 	`notes` text,
 	`nextMaintenanceHours` decimal(10,2),
 	`nextMaintenanceDate` timestamp,
-	`createdAt` timestamp NOT NULL DEFAULT (now()),
-	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	`updatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 	CONSTRAINT `maintenanceLogs_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
@@ -31,8 +31,8 @@ CREATE TABLE `maintenancePlans` (
 	`status` enum('pending','due','overdue','completed') NOT NULL DEFAULT 'pending',
 	`estimatedCost` decimal(10,2),
 	`notes` text,
-	`createdAt` timestamp NOT NULL DEFAULT (now()),
-	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	`updatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 	CONSTRAINT `maintenancePlans_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
