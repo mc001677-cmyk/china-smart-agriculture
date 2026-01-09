@@ -1,0 +1,274 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+:root {
+  /* John Deere Brand Colors */
+  --jd-green: #367C2B;
+  --jd-yellow: #FFDE00;
+  --tech-blue: #00A0E9;
+  --alert-red: #E60012;
+  --dark-bg: #1A1A1A;
+  --light-bg: #F5F5F5;
+  
+  /* Apple Style Color Palette - Light Mode Default */
+  --background: oklch(0.98 0 0); /* Almost white */
+  --foreground: oklch(0.2 0 0); /* Dark grey, not pure black */
+  
+  /* Glassmorphism Card Base */
+  --card: oklch(1 0 0 / 0.75); /* White with transparency */
+  --card-foreground: oklch(0.2 0 0);
+  
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.2 0 0);
+  
+  /* Apple Blue */
+  --primary: oklch(0.55 0.2 260); 
+  --primary-foreground: oklch(1 0 0);
+  
+  /* Light Gray Backgrounds */
+  --secondary: oklch(0.96 0 0);
+  --secondary-foreground: oklch(0.2 0 0);
+  
+  --muted: oklch(0.96 0 0);
+  --muted-foreground: oklch(0.55 0 0);
+  
+  --accent: oklch(0.96 0 0);
+  --accent-foreground: oklch(0.2 0 0);
+  
+  --destructive: oklch(0.6 0.2 20);
+  --destructive-foreground: oklch(0.98 0 0);
+  
+  /* Subtle Borders */
+  --border: oklch(0 0 0 / 0.08);
+  --input: oklch(0 0 0 / 0.08);
+  --ring: oklch(0.55 0.2 260 / 0.5);
+  
+  --radius: 1rem;
+  
+  /* Sidebar specific */
+  --sidebar: oklch(1 0 0 / 0.8);
+  --sidebar-foreground: oklch(0.25 0 0);
+  --sidebar-primary: oklch(0.2 0 0);
+  --sidebar-primary-foreground: oklch(0.98 0 0);
+  --sidebar-accent: oklch(0.96 0 0);
+  --sidebar-accent-foreground: oklch(0.2 0 0);
+  --sidebar-border: oklch(0 0 0 / 0.06);
+  --sidebar-ring: oklch(0.8 0 0);
+}
+
+.dark {
+  /* Apple Dark Mode */
+  --background: oklch(0.1 0 0);
+  --foreground: oklch(0.98 0 0);
+  
+  --card: oklch(0.15 0 0 / 0.7);
+  --card-foreground: oklch(0.98 0 0);
+  
+  --popover: oklch(0.15 0 0);
+  --popover-foreground: oklch(0.98 0 0);
+  
+  --primary: oklch(0.6 0.18 260);
+  --primary-foreground: oklch(1 0 0);
+  
+  --secondary: oklch(0.2 0 0);
+  --secondary-foreground: oklch(0.98 0 0);
+  
+  --muted: oklch(0.2 0 0);
+  --muted-foreground: oklch(0.65 0 0);
+  
+  --accent: oklch(0.2 0 0);
+  --accent-foreground: oklch(0.98 0 0);
+  
+  --destructive: oklch(0.4 0.2 20);
+  --destructive-foreground: oklch(0.98 0 0);
+  
+  --border: oklch(1 0 0 / 0.1);
+  --input: oklch(1 0 0 / 0.1);
+  --ring: oklch(0.6 0.18 260 / 0.5);
+  
+  --sidebar: oklch(0.12 0 0 / 0.8);
+  --sidebar-foreground: oklch(0.95 0 0);
+  --sidebar-primary: oklch(0.6 0.18 260);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.2 0 0);
+  --sidebar-accent-foreground: oklch(0.98 0 0);
+  --sidebar-border: oklch(1 0 0 / 0.08);
+  --sidebar-ring: oklch(0.6 0.18 260);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "ss01", "ss02", "cv01", "cv02";
+  }
+  
+  /* Apple-style scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-black/10 rounded-full hover:bg-black/20 transition-colors;
+  }
+  .dark ::-webkit-scrollbar-thumb {
+    @apply bg-white/10 hover:bg-white/20;
+  }
+}
+
+@layer utilities {
+  /* Apple Glassmorphism Utilities */
+  .glass {
+    @apply bg-white/70 backdrop-blur-xl border border-white/20 shadow-lg;
+  }
+  .glass-dark {
+    @apply bg-black/60 backdrop-blur-xl border border-white/10 shadow-lg;
+  }
+  
+  /* Apple Card Shadow */
+  .shadow-apple {
+    box-shadow: 0 4px 24px -1px rgba(0, 0, 0, 0.08), 0 0 1px rgba(0, 0, 0, 0.04);
+  }
+  
+  /* Map Overlay Text Shadow */
+  .text-shadow-sm {
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+  }
+  
+  /* Smooth transitions */
+  .transition-all-smooth {
+    @apply transition-all duration-300 ease-in-out;
+  }
+  
+  /* John Deere Theme */
+  .bg-jd-green {
+    background-color: var(--jd-green);
+  }
+  .bg-jd-yellow {
+    background-color: var(--jd-yellow);
+  }
+  .text-jd-green {
+    color: var(--jd-green);
+  }
+  .text-jd-yellow {
+    color: var(--jd-yellow);
+  }
+  .border-jd-green {
+    border-color: var(--jd-green);
+  }
+  
+  /* Status indicator with breathing animation */
+  .status-indicator {
+    @apply w-2 h-2 rounded-full;
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+  
+  /* Enhanced card hover effect */
+  .card-hover {
+    @apply transition-all duration-300 ease-in-out;
+  }
+  .card-hover:hover {
+    @apply scale-[1.02] shadow-xl;
+  }
+  
+  /* Number counter animation */
+  @keyframes countUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .animate-count-up {
+    animation: countUp 0.5s ease-out;
+  }
+  
+  /* Ripple effect for buttons */
+  @keyframes ripple {
+    to {
+      transform: scale(4);
+      opacity: 0;
+    }
+  }
+}
+
+/* 自定义滚动条样式 */
+.scrollbar-thin {
+  scrollbar-width: thin;
+}
+
+.scrollbar-thumb-gray-300::-webkit-scrollbar-thumb {
+  background-color: #d1d5db;
+  border-radius: 9999px;
+}
+
+.scrollbar-track-transparent::-webkit-scrollbar-track {
+  background-color: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.hover\:scrollbar-thumb-gray-400:hover::-webkit-scrollbar-thumb {
+  background-color: #9ca3af;
+}
+
+/* 隐藏滚动条但保持滚动功能 */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
