@@ -17,6 +17,8 @@ declare global {
 
 // 从统一配置文件导入（确保单一数据源）
 const CENTER = FARM_CONFIG.mapCenter;
+const AMAP_KEY = import.meta.env.VITE_AMAP_KEY || "6f025e700cbacbb0bb866712d20bb35c";
+const AMAP_JS_URL = `https://webapi.amap.com/maps?v=2.0&key=${AMAP_KEY}`;
 
 export default function MapView() {
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -34,6 +36,7 @@ export default function MapView() {
   const [progress, setProgress] = useState(100); // 0-100%
   const [showHistoryControl, setShowHistoryControl] = useState(false); // Toggle visibility
   const [filterStatus, setFilterStatus] = useState<"all" | "working" | "low_fuel">("all");
+  const [mapError, setMapError] = useState<string | null>(null);
   const markersRef = useRef<any[]>([]);
   const polylinesRef = useRef<any[]>([]);
   const animationRef = useRef<number | null>(null);
@@ -91,12 +94,23 @@ export default function MapView() {
   useEffect(() => {
     if (!mapContainer.current || mapInstance.current) return;
 
+    if (!AMAP_KEY) {
+      setMapError("缺少 VITE_AMAP_KEY，请在 .env 中配置高德地图 Key");
+      return;
+    }
+
     // Load AMap script
     const script = document.createElement("script");
-    script.src = `https://webapi.amap.com/maps?v=2.0&key=6f025e700cbacbb0bb866712d20bb35c`;
+    script.src = AMAP_JS_URL;
     script.async = true;
+    script.onerror = () => {
+      setMapError("高德地图脚本加载失败，请检查网络或 Key 配置");
+    };
     script.onload = () => {
-      if (!(window as any).AMap) return;
+      if (!(window as any).AMap) {
+        setMapError("高德地图 SDK 未正确加载");
+        return;
+      }
 
       const AMap = (window as any).AMap;
       const map = new AMap.Map(mapContainer.current, {
@@ -111,6 +125,7 @@ export default function MapView() {
       });
 
       mapInstance.current = map;
+      setMapError(null);
     };
     document.body.appendChild(script);
 
@@ -354,6 +369,15 @@ export default function MapView() {
   return (
     <div className="relative w-full h-full">
       <div ref={mapContainer} className="w-full h-full" />
+      {mapError && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 text-white text-sm px-4 text-center">
+          <div className="space-y-2">
+            <div className="font-semibold">地图加载失败</div>
+            <div className="text-xs opacity-80">{mapError}</div>
+            <div className="text-xs opacity-70">请检查 VITE_AMAP_KEY、网络或更换可用的高德 Key 后重启</div>
+          </div>
+        </div>
+      )}
       
       {/* Date & Playback Controls */}
       <div className={cn(

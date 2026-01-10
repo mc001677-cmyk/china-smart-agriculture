@@ -37,14 +37,23 @@ import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { useLocation } from "wouter";
 
 type FileCategory = "field_image" | "drone_image" | "document" | "report" | "other";
 
 export default function FileManager() {
+  const [, navigate] = useLocation();
   const [activeCategory, setActiveCategory] = useState<FileCategory | "all">("all");
   const [showUploader, setShowUploader] = useState(false);
 
-  const { data: files, isLoading, refetch } = trpc.files.list.useQuery({});
+  const { data: me } = trpc.auth.me.useQuery();
+  const { data: files, isLoading, refetch } = trpc.files.list.useQuery(
+    {},
+    {
+      // FIX: files.list 为受保护接口；未登录时不要请求，避免页面报错
+      enabled: !!me,
+    }
+  );
   
   const deleteMutation = trpc.files.delete.useMutation({
     onSuccess: () => {
@@ -117,6 +126,29 @@ export default function FileManager() {
       other: files?.filter((f) => f.category === "other").length || 0,
     },
   };
+
+  if (!me) {
+    return (
+      <DashboardLayout>
+        <div className="p-6">
+          <Card className="border-slate-200">
+            <CardHeader>
+              <CardTitle>登录后管理文件</CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm text-slate-600 space-y-3">
+              <p>上传与管理地块图片、报告等资料需要先登录。</p>
+              <div className="flex gap-2">
+                <Button onClick={() => navigate("/login")}>去登录</Button>
+                <Button variant="outline" onClick={() => navigate("/register")}>
+                  去注册
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>

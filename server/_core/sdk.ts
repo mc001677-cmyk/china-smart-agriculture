@@ -32,8 +32,9 @@ class OAuthService {
   constructor(private client: ReturnType<typeof axios.create>) {
     console.log("[OAuth] Initialized with baseURL:", ENV.oAuthServerUrl);
     if (!ENV.oAuthServerUrl) {
-      console.error(
-        "[OAuth] ERROR: OAUTH_SERVER_URL is not configured! Set OAUTH_SERVER_URL environment variable."
+      // 本项目支持“本地手机号登录”不依赖 OAuth；缺少该配置不应阻断启动或刷 ERROR
+      console.warn(
+        "[OAuth] OAUTH_SERVER_URL 未配置：OAuth 登录/同步将不可用（本地手机号登录不受影响）"
       );
     }
   }
@@ -171,8 +172,10 @@ class SDKServer {
     return this.signSession(
       {
         openId,
-        appId: ENV.appId,
-        name: options.name || "",
+        // FIX: 本地/未配置 VITE_APP_ID 时，仍应能生成可用 session（避免鉴权永远失败）
+        appId: ENV.appId || "local",
+        // FIX: name 不应影响鉴权；缺省给一个兜底值，避免空字符串造成误判
+        name: options.name || "user",
       },
       options
     );
@@ -214,8 +217,7 @@ class SDKServer {
 
       if (
         !isNonEmptyString(openId) ||
-        !isNonEmptyString(appId) ||
-        !isNonEmptyString(name)
+        !isNonEmptyString(appId)
       ) {
         console.warn("[Auth] Session payload missing required fields");
         return null;
@@ -224,7 +226,7 @@ class SDKServer {
       return {
         openId,
         appId,
-        name,
+        name: typeof name === "string" ? name : "",
       };
     } catch (error) {
       console.warn("[Auth] Session verification failed", String(error));

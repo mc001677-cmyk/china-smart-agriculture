@@ -47,6 +47,24 @@ export default function AdminLogs() {
     { enabled: activeTab === "login" }
   );
 
+  const smsTotalPages = smsLogs ? Math.ceil(smsLogs.total / smsLogs.pageSize) : 0;
+  const loginTotalPages = loginLogs ? Math.ceil(loginLogs.total / loginLogs.pageSize) : 0;
+
+  const renderSmsScene = (scene: string) => {
+    switch (scene) {
+      case "register":
+        return "注册";
+      case "login":
+        return "登录";
+      case "resetPassword":
+        return "重置密码";
+      case "bindPhone":
+        return "绑定";
+      default:
+        return scene || "其他";
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -121,16 +139,16 @@ export default function AdminLogs() {
                           </td>
                           <td className="p-4">
                             <span className="px-2 py-1 rounded-full text-xs bg-blue-50 text-blue-600">
-                              {log.type === "register" ? "注册" : log.type === "login" ? "登录" : "绑定"}
+                              {renderSmsScene(log.scene)}
                             </span>
                           </td>
                           <td className="p-4">
                             <span className={cn(
                               "inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium",
-                              log.status === "sent" ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600"
+                              log.status === "success" ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600"
                             )}>
-                              {log.status === "sent" ? <CheckCircle className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
-                              {log.status === "sent" ? "已发送" : "失败"}
+                              {log.status === "success" ? <CheckCircle className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
+                              {log.status === "success" ? "已发送" : "失败"}
                             </span>
                           </td>
                           <td className="p-4 text-slate-600">{log.provider || "mock"}</td>
@@ -144,14 +162,14 @@ export default function AdminLogs() {
                 </table>
               </div>
 
-              {smsLogs && smsLogs.totalPages > 1 && (
+              {smsLogs && smsTotalPages > 1 && (
                 <div className="flex items-center justify-between p-4 border-t border-slate-100">
-                  <p className="text-sm text-slate-500">共 {smsLogs.total} 条，第 {smsLogs.page}/{smsLogs.totalPages} 页</p>
+                  <p className="text-sm text-slate-500">共 {smsLogs.total} 条，第 {smsLogs.page}/{smsTotalPages} 页</p>
                   <div className="flex items-center gap-2">
                     <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>
                       <ChevronLeft className="w-4 h-4" />
                     </Button>
-                    <Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(smsLogs.totalPages, p + 1))} disabled={page === smsLogs.totalPages}>
+                    <Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(smsTotalPages, p + 1))} disabled={page === smsTotalPages}>
                       <ChevronRight className="w-4 h-4" />
                     </Button>
                   </div>
@@ -192,17 +210,17 @@ export default function AdminLogs() {
                         <td colSpan={5} className="p-8 text-center text-slate-500">暂无登录日志</td>
                       </tr>
                     ) : (
-                      loginLogs?.list.map((log, index) => (
-                        <tr key={index} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
+                      loginLogs?.list.map((log) => (
+                        <tr key={log.id} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
                           <td className="p-4">
                             <div className="flex items-center gap-2">
                               <User className="w-4 h-4 text-slate-400" />
-                              <span>{log.user?.name || log.user?.phone || "未知用户"}</span>
+                              <span>{log.userId ? `用户#${log.userId}` : "未知用户"}</span>
                             </div>
                           </td>
                           <td className="p-4">
                             <span className="px-2 py-1 rounded-full text-xs bg-slate-100 text-slate-600">
-                              {log.method || "密码"}
+                              {log.loginMethod || "未知"}
                             </span>
                           </td>
                           <td className="p-4">
@@ -224,14 +242,14 @@ export default function AdminLogs() {
                 </table>
               </div>
 
-              {loginLogs && loginLogs.totalPages > 1 && (
+              {loginLogs && loginTotalPages > 1 && (
                 <div className="flex items-center justify-between p-4 border-t border-slate-100">
-                  <p className="text-sm text-slate-500">共 {loginLogs.total} 条，第 {loginLogs.page}/{loginLogs.totalPages} 页</p>
+                  <p className="text-sm text-slate-500">共 {loginLogs.total} 条，第 {loginLogs.page}/{loginTotalPages} 页</p>
                   <div className="flex items-center gap-2">
                     <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>
                       <ChevronLeft className="w-4 h-4" />
                     </Button>
-                    <Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(loginLogs.totalPages, p + 1))} disabled={page === loginLogs.totalPages}>
+                    <Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(loginTotalPages, p + 1))} disabled={page === loginTotalPages}>
                       <ChevronRight className="w-4 h-4" />
                     </Button>
                   </div>

@@ -772,6 +772,58 @@ export const adminRouter = router({
         return { success: true };
       }),
 
+    /**
+     * 批量更新配置（前端管理页使用）
+     * FIX: 前端期望存在 admin.settings.update，一次提交多条配置，避免多次请求。
+     */
+    update: adminProcedure
+      .input(
+        z.object({
+          settings: z.array(
+            z.object({
+              key: z.string(),
+              value: z.string(),
+              description: z.string().optional(),
+              category: z.string().optional(),
+            })
+          ),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        const db = await getDb();
+        if (!db) throw new Error("数据库不可用");
+
+        for (const item of input.settings) {
+          const [existing] = await db
+            .select()
+            .from(systemSettings)
+            .where(eq(systemSettings.key, item.key))
+            .limit(1);
+
+          if (existing) {
+            await db
+              .update(systemSettings)
+              .set({
+                value: item.value,
+                description: item.description,
+                category: item.category,
+                updatedBy: ctx.user.id,
+              })
+              .where(eq(systemSettings.key, item.key));
+          } else {
+            await db.insert(systemSettings).values({
+              key: item.key,
+              value: item.value,
+              description: item.description,
+              category: item.category,
+              updatedBy: ctx.user.id,
+            });
+          }
+        }
+
+        return { success: true } as const;
+      }),
+
     // 初始化默认配置
     initDefaults: adminProcedure.mutation(async ({ ctx }) => {
       const db = await getDb();

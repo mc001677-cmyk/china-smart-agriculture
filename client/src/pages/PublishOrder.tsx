@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   MapPin, 
   Zap, 
@@ -20,6 +21,7 @@ import {
   MessageSquare
 } from 'lucide-react';
 import { WorkType } from '@/types/marketplace';
+import { hasPublishingAccess } from '@/lib/membershipAccess';
 
 const WORK_TYPES: WorkType[] = ['翻地', '平整', '播种', '施肥', '打药', '收割', '打包', '运输'];
 const CROP_TYPES = ['玉米', '大豆', '小麦', '水稻', '油菜', '其他'];
@@ -29,9 +31,13 @@ export default function PublishOrder() {
   const [location, setLocation] = useLocation();
   const isSimulateMode = location.startsWith("/simulate");
   const base = isSimulateMode ? "/simulate" : "/dashboard";
-  const { data: membership } = trpc.membership.summary.useQuery(undefined, { enabled: !isSimulateMode });
+  const { data: me } = trpc.auth.me.useQuery(undefined, { enabled: !isSimulateMode });
+  const { data: membership } = trpc.membership.summary.useQuery(undefined, {
+    // FIX: membership.summary 为受保护接口；未登录时不要请求，避免页面报错
+    enabled: !isSimulateMode && !!me,
+  });
   
-  const canPublish = isSimulateMode || (membership?.isActive);
+  const canPublish = hasPublishingAccess(isSimulateMode, membership);
   const { publishOrder } = useMarketplace();
   const submitOrder = trpc.workOrders.submit.useMutation();
   const [step, setStep] = useState(1);
@@ -341,7 +347,15 @@ export default function PublishOrder() {
               <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
                 <div className="space-y-4">
                   <label className="text-sm font-semibold">价格模式</label>
-                  <Tabs value={formData.priceType} onValueChange={(v) => handleInputChange('priceType', v as any)}>
+                  <Tabs
+                    value={formData.priceType}
+                    onValueChange={(v) =>
+                      handleInputChange(
+                        "priceType",
+                        v === "bidding" ? "bidding" : "fixed"
+                      )
+                    }
+                  >
                     <TabsList className="grid w-full grid-cols-2 rounded-xl">
                       <TabsTrigger value="fixed" className="rounded-lg">固定价格</TabsTrigger>
                       <TabsTrigger value="bidding" className="rounded-lg">竞价模式</TabsTrigger>

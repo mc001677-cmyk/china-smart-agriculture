@@ -2,10 +2,14 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Layers, ZoomIn, ZoomOut, Locate, Maximize2 } from 'lucide-react';
 
-// 吉林一号卫星影像配置（从环境变量读取，避免把密钥写死在代码里）
-const JL1_MK = import.meta.env.VITE_JL1_MAP_MK || "";
-const JL1_TK = import.meta.env.VITE_JL1_MAP_TK || "";
+// 吉林一号卫星影像配置（优先从环境变量读取，缺省回落到示例密钥）
+const DEFAULT_JL1_MK = "226bf902749f1630bc25fc720ba7c29f"; // 备份文档中的示例 MK
+const DEFAULT_JL1_TK = "0073bbg5c4266498b8f18225fe63a3fa"; // 备份文档中的示例 TK
+
+const JL1_MK = import.meta.env.VITE_JL1_MAP_MK || DEFAULT_JL1_MK;
+const JL1_TK = import.meta.env.VITE_JL1_MAP_TK || DEFAULT_JL1_TK;
 const JL1_BASE_URL = import.meta.env.VITE_JL1_MAP_BASE_URL ?? "https://api.jl1mall.com/getMap";
+const HAS_JL1_CREDS = Boolean(JL1_MK && JL1_TK);
 
 const JL1_CONFIG = {
   mk: JL1_MK,
@@ -73,10 +77,13 @@ const JL1SatelliteMap: React.FC<JL1SatelliteMapProps> = ({
   const fieldSourceRef = useRef<any>(null);
   const isInteractingRef = useRef(false);
   const interactionTimerRef = useRef<number | null>(null);
+  const jl1FailCountRef = useRef(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [baseMapNotice, setBaseMapNotice] = useState<string | null>(null);
+  const [jl1Available, setJl1Available] = useState(HAS_JL1_CREDS);
   const [currentZoom, setCurrentZoom] = useState(zoom);
-  const [mapType, setMapType] = useState<'satellite' | 'vector'>('satellite');
+  const [mapType, setMapType] = useState<'satellite' | 'vector'>(HAS_JL1_CREDS ? 'satellite' : 'vector');
 
   // 加载 OpenLayers 和 JL1Map SDK
   useEffect(() => {
@@ -125,7 +132,7 @@ const JL1SatelliteMap: React.FC<JL1SatelliteMapProps> = ({
         // 创建吉林一号卫星影像图层
         const jl1Layer = new ol.layer.Tile({
           source: new ol.source.XYZ({
-            url: `https://api.jl1mall.com/getMap/{z}/{x}/{-y}?mk=${JL1_CONFIG.mk}&tk=${JL1_CONFIG.tk}`,
+            url: `${JL1_BASE_URL}/{z}/{x}/{-y}?mk=${JL1_CONFIG.mk}&tk=${JL1_CONFIG.tk}`,
             projection: 'EPSG:3857',
             crossOrigin: 'anonymous',
             tileLoadFunction: (imageTile: any, src: string) => {
@@ -135,8 +142,13 @@ const JL1SatelliteMap: React.FC<JL1SatelliteMapProps> = ({
               const y = imageTile.getTileCoord()[2];
               // TMS Y 轴翻转
               const tmsY = Math.pow(2, z) - 1 - y;
-              const url = `https://api.jl1mall.com/getMap/${z}/${x}/${tmsY}?mk=${JL1_CONFIG.mk}&tk=${JL1_CONFIG.tk}`;
-              imageTile.getImage().src = url;
+              const url = JL1_CONFIG.getTileUrl(z, x, y);
+              const img: HTMLImageElement = imageTile.getImage();
+              img.onerror = () => {
+                // 连续失败时自动降级到 OSM，避免黑屏
+                jl1FailCountRef.current += 1;
+              };
+              img.src = url;
             }
           }),
           visible: true,
@@ -147,6 +159,15 @@ const JL1SatelliteMap: React.FC<JL1SatelliteMapProps> = ({
           source: new ol.source.OSM(),
           visible: false,
         });
+
+        // 若未配置吉林一号密钥：直接使用 OSM 底图，并提示
+        if (!HAS_JL1_CREDS) {
+          jl1Layer.setVisible(false);
+          osmLayer.setVisible(true);
+          setMapType('vector');
+          setJl1Available(false);
+          setBaseMapNotice('未配置吉林一号密钥，已自动切换到矢量底图（OSM）。请在 .env 配置 VITE_JL1_MAP_MK / VITE_JL1_MAP_TK');
+        }
 
         // ========= Vector Layers（一次初始化，后续动态更新 source）=========
         // 1) 已完成地块（面）
@@ -245,6 +266,25 @@ const JL1SatelliteMap: React.FC<JL1SatelliteMapProps> = ({
 
         mapRef.current = { map, jl1Layer, osmLayer, ol };
         setIsLoading(false);
+        setError(null);
+
+        // 若已配置 JL1：监控瓦片加载失败，连续失败则降级到 OSM
+        if (HAS_JL1_CREDS) {
+          jl1FailCountRef.current = 0;
+          const timer = window.setInterval(() => {
+            // 连续失败达到阈值后降级（避免偶发抖动）
+            if (jl1FailCountRef.current >= 3 && mapRef.current?.jl1Layer && mapRef.current?.osmLayer) {
+              mapRef.current.jl1Layer.setVisible(false);
+              mapRef.current.osmLayer.setVisible(true);
+              setMapType('vector');
+              setJl1Available(false);
+              setBaseMapNotice('吉林一号瓦片加载失败，已自动切换到矢量底图（OSM）。请检查 mk/tk 是否有效、网络是否可访问 jl1mall');
+              window.clearInterval(timer);
+            }
+          }, 1200);
+          // 清理：随地图销毁
+          (map as any).__jl1FailWatchTimer = timer;
+        }
         
         // 用户交互保护：拖拽/缩放时暂停自动跟随，避免冲突抖动/报错
         const markInteracting = () => {
@@ -289,6 +329,8 @@ const JL1SatelliteMap: React.FC<JL1SatelliteMapProps> = ({
       } catch {}
       if (mapRef.current && mapRef.current.map) {
         try {
+          const t = (mapRef.current.map as any).__jl1FailWatchTimer;
+          if (t) window.clearInterval(t);
           mapRef.current.map.setTarget(undefined);
         } catch {}
       }
@@ -460,6 +502,11 @@ const JL1SatelliteMap: React.FC<JL1SatelliteMapProps> = ({
     if (mapRef.current) {
       const { jl1Layer, osmLayer } = mapRef.current;
       const newType = mapType === 'satellite' ? 'vector' : 'satellite';
+      // JL1 不可用时禁止切回卫星底图，避免再次黑屏
+      if (newType === 'satellite' && !jl1Available) {
+        setBaseMapNotice('卫星影像不可用：请配置 VITE_JL1_MAP_MK / VITE_JL1_MAP_TK，或检查吉林一号服务可用性');
+        return;
+      }
       setMapType(newType);
       
       if (jl1Layer && osmLayer) {
@@ -530,13 +577,22 @@ const JL1SatelliteMap: React.FC<JL1SatelliteMapProps> = ({
             <div className="bg-black/60 backdrop-blur-sm rounded-lg px-3 py-2 text-white text-xs">
               <div className="flex items-center gap-2">
                 <span className="text-green-400">●</span>
-                <span>吉林一号卫星影像</span>
+                <span>{mapType === 'satellite' ? '吉林一号卫星影像' : 'OpenStreetMap 矢量底图'}</span>
               </div>
               <div className="text-gray-400 text-[10px] mt-1">
-                0.5米分辨率 | 长光卫星
+                {mapType === 'satellite' ? '0.5米分辨率 | 长光卫星' : '备用底图 | OSM'}
               </div>
             </div>
           </div>
+
+          {/* 顶部：底图降级提示（非致命） */}
+          {baseMapNotice && (
+            <div className="absolute top-16 left-1/2 -translate-x-1/2 z-30 max-w-[720px] px-4">
+              <div className="bg-amber-500/20 border border-amber-500/40 text-amber-100 text-xs rounded-xl px-3 py-2 backdrop-blur-sm">
+                {baseMapNotice}
+              </div>
+            </div>
+          )}
 
           {/* 右上角：吉林一号标识 + 图层切换 */}
           <div className="absolute top-3 right-3 z-20 flex items-center gap-2">

@@ -1,0 +1,18 @@
+.DS_Store
+
+# dependencies
+node_modules/
+
+# build output
+dist/
+
+# local env (never commit secrets)
+.env
+.env.local
+.env.*.local
+
+# logs
+*.log
+
+# vite
+client/node_modules/

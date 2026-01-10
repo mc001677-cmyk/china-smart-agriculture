@@ -43,6 +43,7 @@ export default function WorkLogs() {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [filterMachineId, setFilterMachineId] = useState<string>("all");
   const [filterFieldId, setFilterFieldId] = useState<string>("all");
+  const { data: me } = trpc.auth.me.useQuery();
 
   // 表单状态
   const [formData, setFormData] = useState({
@@ -62,13 +63,13 @@ export default function WorkLogs() {
     machineId: filterMachineId !== "all" ? parseInt(filterMachineId) : undefined,
     fieldId: filterFieldId !== "all" ? parseInt(filterFieldId) : undefined,
     limit: 100,
-  });
+  }, { enabled: !!me });
   const { data: machines } = trpc.machines.list.useQuery();
   const { data: fields } = trpc.fields.list.useQuery();
   const { data: stats } = trpc.workLogs.getStats.useQuery({
     machineId: filterMachineId !== "all" ? parseInt(filterMachineId) : undefined,
     fieldId: filterFieldId !== "all" ? parseInt(filterFieldId) : undefined,
-  });
+  }, { enabled: !!me });
 
   const createMutation = trpc.workLogs.create.useMutation({
     onSuccess: () => {
@@ -105,6 +106,21 @@ export default function WorkLogs() {
       avgMoisture: "",
     });
   };
+
+  if (!me) {
+    return (
+      <div className="p-6">
+        <Card className="border-slate-200">
+          <CardHeader>
+            <CardTitle>登录后查看作业记录</CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm text-slate-600">
+            作业记录用于追溯作业时间、面积、油耗等数据。请先登录。
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   const handleSubmit = () => {
     if (!formData.machineId || !formData.fieldId || !formData.startTime) {

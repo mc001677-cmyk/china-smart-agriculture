@@ -9,8 +9,11 @@ import { format } from "date-fns";
 import { zhCN } from "date-fns/locale";
 
 export default function MembershipCenter() {
-  const { data: user, refetch: refetchUser } = trpc.auth.me.useQuery();
-  const { data: summary, refetch: refetchSummary } = trpc.membership.summary.useQuery();
+  const { data: user, refetch: refetchUser, isLoading: userLoading } = trpc.auth.me.useQuery();
+  const { data: summary, refetch: refetchSummary } = trpc.membership.summary.useQuery(undefined, {
+    // FIX: membership.summary 为受保护接口；未登录时不要请求，避免页面报错
+    enabled: !!user,
+  });
   const createOrder = trpc.membership.createOrder.useMutation();
   const mockPay = trpc.membership.mockPay.useMutation();
 
@@ -19,6 +22,9 @@ export default function MembershipCenter() {
   const handleUpgrade = async () => {
     try {
       setIsProcessing(true);
+      if (!user) {
+        throw new Error("请先登录");
+      }
       // 1. 创建订单
       const order = await createOrder.mutateAsync({ plan: "silver" });
       if (!order.success || !order.orderId) throw new Error("创建订单失败");
@@ -119,6 +125,21 @@ export default function MembershipCenter() {
           </div>
         )}
       </div>
+
+      {!userLoading && !user && (
+        <div className="glass-card p-6 rounded-2xl border border-slate-200">
+          <h2 className="text-lg font-bold">登录后管理会员权益</h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            注册免费，可查看全部作业需求内容，但暂不支持查看农场主联系方式。白银会员 66 元/年，可查看全部农场主联系方式。
+          </p>
+          <div className="mt-4 flex gap-2">
+            <Button onClick={() => (window.location.href = "/login")}>去登录</Button>
+            <Button variant="outline" onClick={() => (window.location.href = "/register")}>
+              去注册
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Tiers Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

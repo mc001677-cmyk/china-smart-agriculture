@@ -10,6 +10,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tractor, Search, MapPin, BadgeDollarSign, Phone, Clock, AlertTriangle, ShieldCheck } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useLocation } from "wouter";
+import { hasPublishingAccess } from "@/lib/membershipAccess";
 
 const CATEGORY_LABELS: { key: MachineCategory | "全部"; label: string }[] = [
   { key: "全部", label: "全部" },
@@ -36,10 +37,19 @@ export default function MachineMarket() {
   const [location, navigate] = useLocation();
   const isSimulateMode = location.startsWith("/simulate");
   const { data: me } = trpc.auth.me.useQuery(undefined, { enabled: !isSimulateMode });
-  const { data: membership } = trpc.membership.summary.useQuery(undefined, { enabled: !isSimulateMode });
+  const { data: membership } = trpc.membership.summary.useQuery(undefined, {
+    // FIX: membership.summary 为受保护接口；未登录时不要请求，避免页面报错
+    enabled: !isSimulateMode && !!me,
+  });
   
-  const canPublish = isSimulateMode || (membership?.isActive);
-  const { data: approvedListings } = trpc.machineListings.listApproved.useQuery(undefined, { enabled: !isSimulateMode });
+  const canPublish = hasPublishingAccess(isSimulateMode, membership);
+  const { data: approvedListings, isLoading: listingsLoading } = trpc.machineListings.listApproved.useQuery(
+    undefined,
+    {
+      // FIX: listApproved 为受保护接口；未登录时不要请求，避免页面报错
+      enabled: !isSimulateMode && !!me,
+    }
+  );
   const [activeCategory, setActiveCategory] = useState<MachineCategory | "全部">("全部");
   const [keyword, setKeyword] = useState("");
 
@@ -81,6 +91,10 @@ export default function MachineMarket() {
             <Button
               className="bg-emerald-600 hover:bg-emerald-700 text-white"
               onClick={() => {
+                if (!isSimulateMode && !me) {
+                  navigate("/login");
+                  return;
+                }
                 if (!canPublish) {
                   navigate("/dashboard/membership");
                   return;
@@ -92,6 +106,23 @@ export default function MachineMarket() {
             </Button>
           </div>
         </div>
+
+        {!isSimulateMode && !me && (
+          <div className="mb-4 glass-card bg-slate-900/40 border border-slate-700/70 p-4 rounded-xl">
+            <div className="text-sm text-slate-100 font-semibold">登录后查看二手机联系方式</div>
+            <div className="text-xs text-slate-300 mt-1">
+              注册免费，可查看全部挂牌信息并直接联系卖家。
+            </div>
+            <div className="mt-3 flex gap-2">
+              <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => navigate("/login")}>
+                去登录
+              </Button>
+              <Button variant="outline" className="border-slate-600 text-slate-100 hover:bg-slate-800/80" onClick={() => navigate("/register")}>
+                去注册
+              </Button>
+            </div>
+          </div>
+        )}
 
         {/* 免责声明与规则提示 */}
         <div className="mb-4 glass-card bg-amber-500/10 border-amber-500/30 p-3 rounded-xl flex items-center justify-between gap-4">
@@ -153,7 +184,11 @@ export default function MachineMarket() {
         {/* 列表区 */}
         <div className="flex-1 overflow-hidden">
           <ScrollArea className="h-full pr-2">
-            {filtered.length === 0 ? (
+            {!isSimulateMode && !!me && listingsLoading ? (
+              <div className="h-full flex items-center justify-center text-slate-300 text-sm">
+                正在加载挂牌信息...
+              </div>
+            ) : filtered.length === 0 ? (
               <div className="h-full flex items-center justify-center text-slate-300 text-sm">
                 暂无符合条件的挂牌设备。
               </div>

@@ -26,6 +26,7 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { WorkOrder, WorkType } from '@/types/marketplace';
+import { hasPublishingAccess } from '@/lib/membershipAccess';
 
 const WORK_TYPES: WorkType[] = ['翻地', '平整', '播种', '施肥', '打药', '收割', '打包', '运输'];
 
@@ -44,10 +45,13 @@ export default function MarketplaceHub() {
   const isSimulateMode = location.startsWith("/simulate");
   const base = isSimulateMode ? "/simulate" : "/dashboard";
   const to = (subpage: string) => `${base}/${subpage}`;
-  const { data: me } = trpc.auth.me.useQuery();
-  const { data: membership } = trpc.membership.summary.useQuery();
+  const { data: me } = trpc.auth.me.useQuery(undefined, { enabled: !isSimulateMode });
+  const { data: membership } = trpc.membership.summary.useQuery(undefined, {
+    // FIX: membership.summary 是受保护接口，未登录时不要请求，避免页面报错
+    enabled: !isSimulateMode && !!me,
+  });
   
-  const canPublish = isSimulateMode || (membership?.isActive);
+  const canPublish = hasPublishingAccess(isSimulateMode, membership);
   const { orders, stats, loading } = useMarketplace();
   const [filteredOrders, setFilteredOrders] = useState<WorkOrder[]>([]);
   const [selectedWorkType, setSelectedWorkType] = useState<WorkType | 'all'>('all');
@@ -267,6 +271,9 @@ export default function MarketplaceHub() {
 
 function OrderCard({ order, membership, onUpgrade }: { order: WorkOrder, membership: any, onUpgrade: () => void }) {
   const isPremium = membership?.isActive;
+  const rawPhone = (order as unknown as { contactPhone?: unknown })?.contactPhone;
+  const contactPhone =
+    typeof rawPhone === "string" && rawPhone.length > 0 ? rawPhone : null;
   
   return (
     <Card className="bg-white/90 backdrop-blur-sm border-gray-200 shadow-md hover:shadow-lg transition-shadow overflow-hidden">
@@ -332,7 +339,9 @@ function OrderCard({ order, membership, onUpgrade }: { order: WorkOrder, members
                 </div>
                 <div>
                   <p className="text-xs text-green-600 font-medium uppercase tracking-wider">联系农场主</p>
-                  <p className="text-sm font-bold text-green-900">{(order as any).contactPhone || "138****8888"}</p>
+                  <p className="text-sm font-bold text-green-900">
+                    {contactPhone ?? "未填写"}
+                  </p>
                 </div>
               </div>
               <Badge className="bg-green-600 text-white border-none">白银会员已解锁</Badge>
