@@ -4,7 +4,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { ArrowLeft, ChevronRight, Lock, Phone, User, Wheat } from "lucide-react";
+import { ArrowLeft, ChevronRight, Lock, Phone, User, Wheat, ShieldCheck } from "lucide-react";
+import { toast } from "sonner";
 
 export default function Register() {
   const [location, setLocation] = useLocation();
@@ -12,8 +13,46 @@ export default function Register() {
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [code, setCode] = useState("");
+  const [isSending, setIsSending] = useState(false);
+  const [countdown, setCountdown] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const sendCode = async () => {
+    if (!phone.match(/^1[3-9]\d{9}$/)) {
+      toast.error("请输入正确的手机号");
+      return;
+    }
+    setIsSending(true);
+    try {
+      const r = await fetch("/api/auth/sendSmsCode", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ phone, scene: "register" }),
+      });
+      const data = await r.json();
+      if (data.ok) {
+        toast.success("验证码已发送" + (data.data.mockCode ? ` (测试码: ${data.data.mockCode})` : ""));
+        setCountdown(60);
+        const timer = setInterval(() => {
+          setCountdown((prev) => {
+            if (prev <= 1) {
+              clearInterval(timer);
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+      } else {
+        toast.error(data.error || "发送失败");
+      }
+    } catch (err) {
+      toast.error("发送失败，请稍后再试");
+    } finally {
+      setIsSending(false);
+    }
+  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,12 +61,16 @@ export default function Register() {
       setError("两次密码不一致");
       return;
     }
+    if (code.length !== 6) {
+      setError("请输入6位验证码");
+      return;
+    }
     setIsLoading(true);
     try {
       const r = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ name, phone, password }),
+        body: JSON.stringify({ name, phone, password, code }),
       });
       const data = await r.json().catch(() => ({}));
       if (!r.ok || !data?.ok) {
@@ -35,6 +78,7 @@ export default function Register() {
         setError(code === "already_registered" ? "该手机号已注册" : code);
         return;
       }
+      toast.success("注册成功");
       setLocation("/dashboard/onboarding");
     } catch (err) {
       setError(err instanceof Error ? err.message : "注册失败");
@@ -93,7 +137,25 @@ export default function Register() {
                   <Label className="text-slate-700 font-semibold flex items-center gap-2">
                     <Phone className="h-4 w-4 text-[#1f6b3a]" /> 手机号
                   </Label>
-                  <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="请输入手机号" required className="h-12 rounded-2xl" />
+                  <div className="flex gap-2">
+                    <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="请输入手机号" required className="h-12 rounded-2xl flex-1" />
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={sendCode} 
+                      disabled={isSending || countdown > 0}
+                      className="h-12 px-4 rounded-2xl border-slate-200 text-slate-600 font-medium whitespace-nowrap"
+                    >
+                      {countdown > 0 ? `${countdown}s` : "获取验证码"}
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-slate-700 font-semibold flex items-center gap-2">
+                    <ShieldCheck className="h-4 w-4 text-[#1f6b3a]" /> 验证码
+                  </Label>
+                  <Input value={code} onChange={(e) => setCode(e.target.value)} placeholder="请输入6位验证码" required className="h-12 rounded-2xl" />
                 </div>
 
                 <div className="space-y-2">

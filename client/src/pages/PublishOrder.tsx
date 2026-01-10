@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   MapPin, 
   Zap, 
@@ -15,7 +14,10 @@ import {
   Calendar,
   AlertCircle,
   CheckCircle2,
-  ArrowRight
+  ArrowRight,
+  Phone,
+  User,
+  MessageSquare
 } from 'lucide-react';
 import { WorkType } from '@/types/marketplace';
 
@@ -27,16 +29,10 @@ export default function PublishOrder() {
   const [location, setLocation] = useLocation();
   const isSimulateMode = location.startsWith("/simulate");
   const base = isSimulateMode ? "/simulate" : "/dashboard";
-  const { data: me } = trpc.auth.me.useQuery(undefined, { enabled: !isSimulateMode });
-  const membershipLevel = (me as any)?.membershipLevel ?? "free";
-  const verificationStatus = (me as any)?.verificationStatus ?? "unsubmitted";
-  const canPublish = isSimulateMode || (
-    me && (
-      (me as any).role === "admin" ||
-      (["silver", "gold", "diamond"].includes(membershipLevel) && verificationStatus === "approved")
-    )
-  );
-  const { publishOrder, loading } = useMarketplace();
+  const { data: membership } = trpc.membership.summary.useQuery(undefined, { enabled: !isSimulateMode });
+  
+  const canPublish = isSimulateMode || (membership?.isActive);
+  const { publishOrder } = useMarketplace();
   const submitOrder = trpc.workOrders.submit.useMutation();
   const [step, setStep] = useState(1);
   const [publishSuccess, setPublishSuccess] = useState(false);
@@ -52,6 +48,10 @@ export default function PublishOrder() {
     priceType: 'fixed' as 'fixed' | 'bidding',
     fixedPrice: '',
     biddingStartPrice: '',
+    contactName: '',
+    contactPhone: '',
+    contactWechat: '',
+    contactAddress: '',
     requirements: [] as string[],
   });
 
@@ -97,36 +97,25 @@ export default function PublishOrder() {
           priceType: formData.priceType,
           fixedPrice: formData.priceType === 'fixed' ? parseFloat(formData.fixedPrice) : undefined,
           biddingStartPrice: formData.priceType === 'bidding' ? parseFloat(formData.biddingStartPrice) : undefined,
+          contactName: formData.contactName,
+          contactPhone: formData.contactPhone,
+          contactWechat: formData.contactWechat,
+          contactAddress: formData.contactAddress,
         });
       }
       setPublishSuccess(true);
       setTimeout(() => {
         setLocation(`${base}/marketplace`);
       }, 1500);
-      setFormData({
-        workType: '翻地',
-        fieldName: '',
-        area: '',
-        cropType: '',
-        description: '',
-        startDate: '',
-        endDate: '',
-        preferredTime: '全天',
-        priceType: 'fixed',
-        fixedPrice: '',
-        biddingStartPrice: '',
-        requirements: [],
-      });
     } catch (error) {
       alert('发布失败：' + (error instanceof Error ? error.message : '未知错误'));
     }
   };
 
-  // 发布成功提示
   if (publishSuccess) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-blue-50 p-6 flex items-center justify-center">
-        <Card className="bg-white/90 backdrop-blur-sm border-gray-200 shadow-lg p-8 text-center">
+        <Card className="bg-white/90 backdrop-blur-sm border-gray-200 shadow-lg p-8 text-center rounded-3xl">
           <CheckCircle2 className="h-16 w-16 text-green-600 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-gray-800 mb-2">订单发布成功！</h2>
           <p className="text-gray-600">正在跳转到交易大厅...</p>
@@ -138,18 +127,20 @@ export default function PublishOrder() {
   if (!canPublish) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-blue-50 p-6 flex items-center justify-center pointer-events-auto">
-        <Card className="bg-white/90 backdrop-blur-sm border-gray-200 shadow-lg p-8 text-center rounded-3xl">
-          <AlertCircle className="h-14 w-14 text-orange-500 mx-auto mb-4" />
+        <Card className="bg-white/90 backdrop-blur-sm border-gray-200 shadow-lg p-8 text-center rounded-3xl max-w-md">
+          <div className="w-20 h-20 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <AlertCircle className="h-10 w-10 text-orange-500" />
+          </div>
           <h2 className="text-2xl font-bold text-gray-800 mb-2">暂未开通发布权限</h2>
-          <p className="text-gray-600">
-            正式运行需「白银及以上会员」且通过实名认证；黄金会员每天最多发布 5 条。
+          <p className="text-gray-600 mb-8">
+            发布作业需求需开通「白银会员」（66元/年）。白银会员可解锁联系方式查看权限并获得发布资格。
           </p>
-          <div className="flex gap-3 justify-center mt-5">
-            <Button className="rounded-2xl bg-[#1f6b3a] hover:bg-[#1b5f33] text-white" onClick={() => setLocation("/dashboard/onboarding")}>
-              去注册与审核中心
+          <div className="flex flex-col gap-3">
+            <Button className="rounded-xl bg-primary hover:bg-primary/90 text-white h-12 shadow-apple" onClick={() => setLocation("/dashboard/membership")}>
+              去开通白银会员
             </Button>
-            <Button variant="outline" className="rounded-2xl" onClick={() => setLocation("/dashboard/onboarding")}>
-              升级会员
+            <Button variant="ghost" className="rounded-xl h-12" onClick={() => setLocation("/dashboard/marketplace")}>
+              返回交易大厅
             </Button>
           </div>
         </Card>
@@ -163,50 +154,50 @@ export default function PublishOrder() {
         {/* 步骤指示器 */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
-            {[1, 2, 3].map((s) => (
+            {[1, 2, 3, 4].map((s) => (
               <div key={s} className="flex items-center flex-1">
                 <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white transition-all ${
-                  s <= step ? 'bg-gradient-to-r from-green-600 to-green-700' : 'bg-gray-300'
+                  s <= step ? 'bg-primary shadow-apple' : 'bg-gray-300'
                 }`}>
                   {s < step ? <CheckCircle2 className="h-6 w-6" /> : s}
                 </div>
-                {s < 3 && <div className={`flex-1 h-1 mx-2 transition-all ${s < step ? 'bg-green-600' : 'bg-gray-300'}`} />}
+                {s < 4 && <div className={`flex-1 h-1 mx-2 transition-all ${s < step ? 'bg-primary' : 'bg-gray-300'}`} />}
               </div>
             ))}
           </div>
-          <div className="flex justify-between text-sm text-gray-600">
+          <div className="flex justify-between text-xs text-gray-500 font-medium px-1">
             <span>基本信息</span>
             <span>地块详情</span>
+            <span>联系方式</span>
             <span>价格设置</span>
           </div>
         </div>
 
-        {/* 表单内容 */}
-        <Card className="bg-white/90 backdrop-blur-sm border-gray-200 shadow-lg">
-          <CardHeader>
-            <CardTitle className="text-2xl">
+        <Card className="bg-white/90 backdrop-blur-sm border-none shadow-apple rounded-3xl overflow-hidden">
+          <CardHeader className="bg-primary/5 border-b border-primary/10">
+            <CardTitle className="text-xl">
               {step === 1 && '第一步：基本信息'}
               {step === 2 && '第二步：地块详情'}
-              {step === 3 && '第三步：价格设置'}
+              {step === 3 && '第三步：联系方式'}
+              {step === 4 && '第四步：价格设置'}
             </CardTitle>
             <CardDescription>
-              {step === 1 && '选择作业类型和基本信息'}
+              {step === 1 && '选择作业类型和地块基本信息'}
               {step === 2 && '描述地块特征和作业要求'}
-              {step === 3 && '设置价格和发布订单'}
+              {step === 3 && '填写农场主联系信息（仅会员可见）'}
+              {step === 4 && '设置价格并发布订单'}
             </CardDescription>
           </CardHeader>
 
-          <CardContent className="space-y-6">
-            {/* 第一步：基本信息 */}
+          <CardContent className="p-8 space-y-6">
             {step === 1 && (
-              <div className="space-y-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <Zap className="inline h-4 w-4 mr-1 text-green-600" />
-                    作业类型 *
+              <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold flex items-center gap-2">
+                    <Zap className="h-4 w-4 text-primary" /> 作业类型 *
                   </label>
                   <Select value={formData.workType} onValueChange={(v) => handleInputChange('workType', v)}>
-                    <SelectTrigger className="border-gray-300">
+                    <SelectTrigger className="rounded-xl border-slate-200">
                       <SelectValue placeholder="选择作业类型" />
                     </SelectTrigger>
                     <SelectContent>
@@ -216,232 +207,193 @@ export default function PublishOrder() {
                     </SelectContent>
                   </Select>
                 </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <MapPin className="inline h-4 w-4 mr-1 text-green-600" />
-                    地块名称 *
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold flex items-center gap-2">
+                    <MapPin className="h-4 w-4 text-primary" /> 地块名称 *
                   </label>
                   <Input
-                    placeholder="如：北田地块、东边大地"
+                    placeholder="如：北田地块"
                     value={formData.fieldName}
                     onChange={(e) => handleInputChange('fieldName', e.target.value)}
-                    className="border-gray-300"
+                    className="rounded-xl border-slate-200"
                   />
                 </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <MapPin className="inline h-4 w-4 mr-1 text-green-600" />
-                    地块面积 (亩) *
-                  </label>
-                  <Input
-                    type="number"
-                    placeholder="输入面积"
-                    value={formData.area}
-                    onChange={(e) => handleInputChange('area', e.target.value)}
-                    className="border-gray-300"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <Zap className="inline h-4 w-4 mr-1 text-green-600" />
-                    作物类型 *
-                  </label>
-                  <Select value={formData.cropType} onValueChange={(v) => handleInputChange('cropType', v)}>
-                    <SelectTrigger className="border-gray-300">
-                      <SelectValue placeholder="选择作物类型" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CROP_TYPES.map(type => (
-                        <SelectItem key={type} value={type}>{type}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold flex items-center gap-2">
+                      <MapPin className="h-4 w-4 text-primary" /> 面积 (亩) *
+                    </label>
+                    <Input
+                      type="number"
+                      placeholder="输入面积"
+                      value={formData.area}
+                      onChange={(e) => handleInputChange('area', e.target.value)}
+                      className="rounded-xl border-slate-200"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold flex items-center gap-2">
+                      <Zap className="h-4 w-4 text-primary" /> 作物类型 *
+                    </label>
+                    <Select value={formData.cropType} onValueChange={(v) => handleInputChange('cropType', v)}>
+                      <SelectTrigger className="rounded-xl border-slate-200">
+                        <SelectValue placeholder="选择作物" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {CROP_TYPES.map(type => (
+                          <SelectItem key={type} value={type}>{type}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
             )}
 
-            {/* 第二步：地块详情 */}
             {step === 2 && (
-              <div className="space-y-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <Calendar className="inline h-4 w-4 mr-1 text-green-600" />
-                    开始日期 *
-                  </label>
-                  <Input
-                    type="date"
-                    value={formData.startDate}
-                    onChange={(e) => handleInputChange('startDate', e.target.value)}
-                    className="border-gray-300"
-                  />
+              <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold flex items-center gap-2">
+                      <Calendar className="h-4 w-4 text-primary" /> 开始日期 *
+                    </label>
+                    <Input
+                      type="date"
+                      value={formData.startDate}
+                      onChange={(e) => handleInputChange('startDate', e.target.value)}
+                      className="rounded-xl border-slate-200"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold flex items-center gap-2">
+                      <Calendar className="h-4 w-4 text-primary" /> 结束日期
+                    </label>
+                    <Input
+                      type="date"
+                      value={formData.endDate}
+                      onChange={(e) => handleInputChange('endDate', e.target.value)}
+                      className="rounded-xl border-slate-200"
+                    />
+                  </div>
                 </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <Calendar className="inline h-4 w-4 mr-1 text-green-600" />
-                    结束日期 *
-                  </label>
-                  <Input
-                    type="date"
-                    value={formData.endDate}
-                    onChange={(e) => handleInputChange('endDate', e.target.value)}
-                    className="border-gray-300"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <Zap className="inline h-4 w-4 mr-1 text-green-600" />
-                    偏好时间
-                  </label>
-                  <Select value={formData.preferredTime} onValueChange={(v) => handleInputChange('preferredTime', v)}>
-                    <SelectTrigger className="border-gray-300">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {PREFERRED_TIMES.map(time => (
-                        <SelectItem key={time} value={time}>{time}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <AlertCircle className="inline h-4 w-4 mr-1 text-green-600" />
-                    作业描述和要求
-                  </label>
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold">作业描述</label>
                   <Textarea
-                    placeholder="描述地块特征、作业要求、注意事项等..."
+                    placeholder="描述地块地形、路况、作业要求等..."
                     value={formData.description}
                     onChange={(e) => handleInputChange('description', e.target.value)}
-                    rows={5}
-                    className="border-gray-300"
+                    className="rounded-xl border-slate-200 min-h-[120px]"
                   />
                 </div>
               </div>
             )}
 
-            {/* 第三步：价格设置 */}
             {step === 3 && (
-              <div className="space-y-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <DollarSign className="inline h-4 w-4 mr-1 text-green-600" />
-                    定价方式 *
+              <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold flex items-center gap-2">
+                    <User className="h-4 w-4 text-primary" /> 联系人姓名 *
                   </label>
-                  <div className="flex gap-4">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        checked={formData.priceType === 'fixed'}
-                        onChange={() => handleInputChange('priceType', 'fixed')}
-                        className="w-4 h-4"
-                      />
-                      <span className="text-sm">固定价</span>
+                  <Input
+                    placeholder="输入姓名"
+                    value={formData.contactName}
+                    onChange={(e) => handleInputChange('contactName', e.target.value)}
+                    className="rounded-xl border-slate-200"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold flex items-center gap-2">
+                      <Phone className="h-4 w-4 text-primary" /> 联系电话 *
                     </label>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        checked={formData.priceType === 'bidding'}
-                        onChange={() => handleInputChange('priceType', 'bidding')}
-                        className="w-4 h-4"
-                      />
-                      <span className="text-sm">竞价</span>
+                    <Input
+                      placeholder="输入手机号"
+                      value={formData.contactPhone}
+                      onChange={(e) => handleInputChange('contactPhone', e.target.value)}
+                      className="rounded-xl border-slate-200"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold flex items-center gap-2">
+                      <MessageSquare className="h-4 w-4 text-primary" /> 微信 (可选)
                     </label>
+                    <Input
+                      placeholder="输入微信号"
+                      value={formData.contactWechat}
+                      onChange={(e) => handleInputChange('contactWechat', e.target.value)}
+                      className="rounded-xl border-slate-200"
+                    />
                   </div>
                 </div>
-
-                {formData.priceType === 'fixed' && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      <DollarSign className="inline h-4 w-4 mr-1 text-green-600" />
-                      价格 (元/亩) *
-                    </label>
-                    <Input
-                      type="number"
-                      placeholder="输入价格"
-                      value={formData.fixedPrice}
-                      onChange={(e) => handleInputChange('fixedPrice', e.target.value)}
-                      className="border-gray-300"
-                    />
-                  </div>
-                )}
-
-                {formData.priceType === 'bidding' && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      <DollarSign className="inline h-4 w-4 mr-1 text-green-600" />
-                      起价 (元/亩) *
-                    </label>
-                    <Input
-                      type="number"
-                      placeholder="输入起价"
-                      value={formData.biddingStartPrice}
-                      onChange={(e) => handleInputChange('biddingStartPrice', e.target.value)}
-                      className="border-gray-300"
-                    />
-                  </div>
-                )}
-
-                {/* 预览 */}
-                <Card className="bg-green-50 border-green-200">
-                  <CardContent className="pt-6">
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">作业类型：</span>
-                        <span className="font-medium">{formData.workType}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">地块面积：</span>
-                        <span className="font-medium">{formData.area} 亩</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">单价：</span>
-                        <span className="font-medium">¥{formData.priceType === 'fixed' ? formData.fixedPrice : formData.biddingStartPrice}/亩</span>
-                      </div>
-                      <div className="border-t border-green-300 pt-2 mt-2 flex justify-between font-bold">
-                        <span>预计总价：</span>
-                        <span className="text-green-700">
-                          ¥{(parseFloat(formData.area || '0') * parseFloat(formData.priceType === 'fixed' ? formData.fixedPrice || '0' : formData.biddingStartPrice || '0')).toFixed(0)}
-                        </span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold">详细地址 *</label>
+                  <Input
+                    placeholder="输入作业地块详细地址"
+                    value={formData.contactAddress}
+                    onChange={(e) => handleInputChange('contactAddress', e.target.value)}
+                    className="rounded-xl border-slate-200"
+                  />
+                </div>
               </div>
             )}
 
-            {/* 按钮 */}
-            <div className="flex gap-4 pt-6 border-t border-gray-200">
+            {step === 4 && (
+              <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
+                <div className="space-y-4">
+                  <label className="text-sm font-semibold">价格模式</label>
+                  <Tabs value={formData.priceType} onValueChange={(v) => handleInputChange('priceType', v as any)}>
+                    <TabsList className="grid w-full grid-cols-2 rounded-xl">
+                      <TabsTrigger value="fixed" className="rounded-lg">固定价格</TabsTrigger>
+                      <TabsTrigger value="bidding" className="rounded-lg">竞价模式</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="fixed" className="pt-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">固定单价 (元/亩)</label>
+                        <div className="relative">
+                          <DollarSign className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                          <Input
+                            type="number"
+                            placeholder="0.00"
+                            value={formData.fixedPrice}
+                            onChange={(e) => handleInputChange('fixedPrice', e.target.value)}
+                            className="pl-9 rounded-xl border-slate-200"
+                          />
+                        </div>
+                      </div>
+                    </TabsContent>
+                    <TabsContent value="bidding" className="pt-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">起拍单价 (元/亩)</label>
+                        <div className="relative">
+                          <DollarSign className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                          <Input
+                            type="number"
+                            placeholder="0.00"
+                            value={formData.biddingStartPrice}
+                            onChange={(e) => handleInputChange('biddingStartPrice', e.target.value)}
+                            className="pl-9 rounded-xl border-slate-200"
+                          />
+                        </div>
+                      </div>
+                    </TabsContent>
+                  </Tabs>
+                </div>
+              </div>
+            )}
+
+            <div className="flex gap-4 pt-4">
               {step > 1 && (
-                <Button
-                  variant="outline"
-                  className="flex-1 border-gray-300"
-                  onClick={() => setStep(step - 1)}
-                >
+                <Button variant="outline" className="flex-1 rounded-xl h-12" onClick={() => setStep(step - 1)}>
                   上一步
                 </Button>
               )}
-              {step < 3 && (
-                <Button
-                  className="flex-1 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white"
-                  onClick={() => setStep(step + 1)}
-                >
-                  下一步
-                  <ArrowRight className="h-4 w-4 ml-2" />
+              {step < 4 ? (
+                <Button className="flex-1 rounded-xl h-12 shadow-apple" onClick={() => setStep(step + 1)}>
+                  下一步 <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
-              )}
-              {step === 3 && (
-                <Button
-                  className="flex-1 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white"
-                  onClick={handlePublish}
-                  disabled={loading}
-                >
-                  {loading ? '发布中...' : '发布订单'}
+              ) : (
+                <Button className="flex-1 rounded-xl h-12 shadow-apple bg-primary hover:bg-primary/90" onClick={handlePublish}>
+                  立即发布需求
                 </Button>
               )}
             </div>

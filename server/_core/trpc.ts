@@ -31,7 +31,9 @@ export const adminProcedure = t.procedure.use(
   t.middleware(async opts => {
     const { ctx, next } = opts;
 
-    if (!ctx.user || ctx.user.role !== 'admin') {
+    // 同时支持 role='admin' 或 isAdmin=1 的用户
+    const isAdmin = ctx.user && (ctx.user.role === 'admin' || ctx.user.isAdmin === 1);
+    if (!isAdmin) {
       throw new TRPCError({ code: "FORBIDDEN", message: NOT_ADMIN_ERR_MSG });
     }
 

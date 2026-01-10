@@ -18,11 +18,12 @@ import {
   Star,
   Clock,
   AlertCircle,
-  CheckCircle2,
   Shield,
   Trophy,
-  FileText,
-  Truck
+  Truck,
+  Phone,
+  Lock,
+  ArrowRight
 } from 'lucide-react';
 import { WorkOrder, WorkType } from '@/types/marketplace';
 
@@ -44,8 +45,10 @@ export default function MarketplaceHub() {
   const base = isSimulateMode ? "/simulate" : "/dashboard";
   const to = (subpage: string) => `${base}/${subpage}`;
   const { data: me } = trpc.auth.me.useQuery();
-  const canPublish = isSimulateMode || (me && ((me as any).role === "admin" || (me as any).verificationStatus === "approved"));
-  const { orders, stats, searchOrders, loading } = useMarketplace();
+  const { data: membership } = trpc.membership.summary.useQuery();
+  
+  const canPublish = isSimulateMode || (membership?.isActive);
+  const { orders, stats, loading } = useMarketplace();
   const [filteredOrders, setFilteredOrders] = useState<WorkOrder[]>([]);
   const [selectedWorkType, setSelectedWorkType] = useState<WorkType | 'all'>('all');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
@@ -136,7 +139,7 @@ export default function MarketplaceHub() {
           size="lg"
           onClick={() => {
             if (!canPublish) {
-              navigate("/dashboard/onboarding");
+              navigate(to('membership'));
               return;
             }
             navigate(to('publish-order'));
@@ -147,19 +150,12 @@ export default function MarketplaceHub() {
         </Button>
         <Button 
           variant="outline"
-          className="border-green-300 text-green-700 hover:bg-green-50"
-          size="lg"
-        >
-          我的竞价
-        </Button>
-        <Button 
-          variant="outline"
           className="border-blue-300 text-blue-700 hover:bg-blue-50"
           size="lg"
-          onClick={() => navigate(to('certification'))}
+          onClick={() => navigate(to('membership'))}
         >
           <Shield className="h-5 w-5 mr-2" />
-          认证中心
+          会员中心
         </Button>
         <Button 
           variant="outline"
@@ -249,19 +245,19 @@ export default function MarketplaceHub() {
 
         <TabsContent value="available" className="space-y-4 mt-6">
           {filteredOrders.filter(o => o.status === '待抢单').map((order) => (
-            <OrderCard key={order.id} order={order} />
+            <OrderCard key={order.id} order={order} membership={membership} onUpgrade={() => navigate(to('membership'))} />
           ))}
         </TabsContent>
 
         <TabsContent value="ongoing" className="space-y-4 mt-6">
           {filteredOrders.filter(o => o.status === '进行中').map((order) => (
-            <OrderCard key={order.id} order={order} />
+            <OrderCard key={order.id} order={order} membership={membership} onUpgrade={() => navigate(to('membership'))} />
           ))}
         </TabsContent>
 
         <TabsContent value="completed" className="space-y-4 mt-6">
           {filteredOrders.filter(o => o.status === '已完成').map((order) => (
-            <OrderCard key={order.id} order={order} />
+            <OrderCard key={order.id} order={order} membership={membership} onUpgrade={() => navigate(to('membership'))} />
           ))}
         </TabsContent>
       </Tabs>
@@ -269,7 +265,9 @@ export default function MarketplaceHub() {
   );
 }
 
-function OrderCard({ order }: { order: WorkOrder }) {
+function OrderCard({ order, membership, onUpgrade }: { order: WorkOrder, membership: any, onUpgrade: () => void }) {
+  const isPremium = membership?.isActive;
+  
   return (
     <Card className="bg-white/90 backdrop-blur-sm border-gray-200 shadow-md hover:shadow-lg transition-shadow overflow-hidden">
       <CardContent className="p-6">
@@ -277,7 +275,7 @@ function OrderCard({ order }: { order: WorkOrder }) {
           <div className="flex-1">
             <div className="flex items-center gap-3 mb-2">
               <h3 className="text-lg font-bold text-gray-900">{order.fieldName}</h3>
-              <Badge className={`${STATUS_COLORS[order.status]}`}>
+              <Badge className={`${STATUS_COLORS[order.status as keyof typeof STATUS_COLORS]}`}>
                 {order.status}
               </Badge>
               <Badge variant="outline" className="border-green-300 text-green-700">
@@ -324,7 +322,38 @@ function OrderCard({ order }: { order: WorkOrder }) {
           </div>
         </div>
 
-        <p className="text-sm text-gray-700 mb-4 line-clamp-2">{order.description}</p>
+        {/* 联系方式权限控制 */}
+        <div className="mb-6">
+          {isPremium ? (
+            <div className="bg-green-50 p-4 rounded-xl border border-green-100 flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
+                  <Phone className="w-5 h-5 text-green-600" />
+                </div>
+                <div>
+                  <p className="text-xs text-green-600 font-medium uppercase tracking-wider">联系农场主</p>
+                  <p className="text-sm font-bold text-green-900">{(order as any).contactPhone || "138****8888"}</p>
+                </div>
+              </div>
+              <Badge className="bg-green-600 text-white border-none">白银会员已解锁</Badge>
+            </div>
+          ) : (
+            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 flex flex-col md:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center">
+                  <Lock className="w-5 h-5 text-slate-500" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-slate-700">联系方式已隐藏</p>
+                  <p className="text-xs text-slate-500">开通白银会员（66元/年）即可解锁</p>
+                </div>
+              </div>
+              <Button size="sm" variant="outline" className="rounded-lg border-primary text-primary hover:bg-primary/5" onClick={onUpgrade}>
+                去开通 <ArrowRight className="w-3 h-3 ml-1" />
+              </Button>
+            </div>
+          )}
+        </div>
 
         <div className="flex gap-3">
           {order.status === '待抢单' && (

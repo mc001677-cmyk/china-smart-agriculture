@@ -1,4 +1,3 @@
-import { useState, useEffect, useRef, useCallback } from "react";
 import { useFleet } from "@/contexts/FleetContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,13 +11,16 @@ import {
   Play, Pause, SkipBack, SkipForward, Calendar, MapPin, 
   Clock, Route, Gauge, Fuel, ChevronLeft, ChevronRight,
   Maximize2, Download, Share2, Layers, Activity, Wheat,
-  Droplets, Thermometer, TrendingUp, BarChart3, Zap
+  Droplets, Thermometer, TrendingUp, BarChart3, Zap, Lock, Crown
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format, subDays, addDays, isSameDay } from "date-fns";
 import { zhCN } from "date-fns/locale";
 import { DailyTrajectory, TrajectoryPoint } from "@/lib/historyGenerator";
 import { FARM_CONFIG, getBrandInfo } from "@/lib/config";
+import { useState, useEffect, useRef } from "react";
+import { trpc } from "@/lib/trpc";
+import { useLocation } from "wouter";
 
 // Playback speed options - 参考迪尔智联
 const SPEED_OPTIONS = [
@@ -166,10 +168,28 @@ const DateSelector = ({ selectedDate, onDateChange, availableDates }: {
 };
 
 // 实时数据面板 - 参考迪尔智联设计
-const RealtimeDataPanel = ({ currentPoint, machine }: {
+const RealtimeDataPanel = ({ currentPoint, machine, isLocked }: {
   currentPoint: TrajectoryPoint | null;
   machine: any;
+  isLocked: boolean;
 }) => {
+  if (isLocked) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 px-4 text-center space-y-4 bg-slate-50 rounded-2xl border border-dashed border-slate-300">
+        <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center">
+          <Lock className="w-6 h-6 text-amber-600" />
+        </div>
+        <div>
+          <h4 className="font-bold text-slate-900">高级遥测数据已锁定</h4>
+          <p className="text-xs text-slate-500 mt-1">升级至黄金会员解锁实时转速、油耗及产量监测</p>
+        </div>
+        <Button size="sm" className="rounded-full bg-amber-500 hover:bg-amber-600 text-white">
+          <Crown className="w-3.5 h-3.5 mr-1.5" /> 立即升级
+        </Button>
+      </div>
+    );
+  }
+
   if (!currentPoint) {
     return (
       <div className="text-center py-6 text-gray-400">
@@ -252,10 +272,28 @@ const RealtimeDataPanel = ({ currentPoint, machine }: {
 };
 
 // 轨迹统计面板
-const TrajectoryStats = ({ trajectory, dailyLog }: {
+const TrajectoryStats = ({ trajectory, dailyLog, isLocked }: {
   trajectory: DailyTrajectory | null;
   dailyLog: any;
+  isLocked: boolean;
 }) => {
+  if (isLocked) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 px-4 text-center space-y-4 bg-slate-50 rounded-2xl border border-dashed border-slate-300">
+        <div className="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center">
+          <Lock className="w-6 h-6 text-purple-600" />
+        </div>
+        <div>
+          <h4 className="font-bold text-slate-900">统计分析已锁定</h4>
+          <p className="text-xs text-slate-500 mt-1">升级至黄金会员解锁作业效率分析与燃油统计</p>
+        </div>
+        <Button size="sm" className="rounded-full bg-purple-600 hover:bg-purple-700 text-white">
+          <Crown className="w-3.5 h-3.5 mr-1.5" /> 立即升级
+        </Button>
+      </div>
+    );
+  }
+
   if (!trajectory || !dailyLog) {
     return (
       <div className="text-center py-6 text-gray-400">
@@ -617,6 +655,11 @@ export default function TrajectoryReplay() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const [colorMode, setColorMode] = useState<'yield' | 'speed' | 'status'>('status');
+  
+  const { data: me } = trpc.auth.me.useQuery();
+  const { data: membershipSummary } = trpc.membership.summary.useQuery(undefined, { enabled: !!me });
+  const membershipLevel = membershipSummary?.membershipLevel ?? (me as any)?.membershipLevel ?? "free";
+  const isPremium = membershipLevel === "gold" || membershipLevel === "diamond" || (me as any)?.role === "admin";
 
   // Get available dates (last 7 days)
   const availableDates = Array.from({ length: 7 }, (_, i) => 
@@ -719,14 +762,18 @@ export default function TrajectoryReplay() {
             <Tabs value={colorMode} onValueChange={(v) => setColorMode(v as any)}>
               <TabsList className="h-8">
                 <TabsTrigger value="status" className="text-xs px-3 h-7">作业状态</TabsTrigger>
-                <TabsTrigger value="yield" className="text-xs px-3 h-7">产量分布</TabsTrigger>
-                <TabsTrigger value="speed" className="text-xs px-3 h-7">速度变化</TabsTrigger>
+                <TabsTrigger value="yield" className="text-xs px-3 h-7" disabled={!isPremium}>
+                  {!isPremium && <Lock className="w-3 h-3 mr-1" />} 产量分布
+                </TabsTrigger>
+                <TabsTrigger value="speed" className="text-xs px-3 h-7" disabled={!isPremium}>
+                  {!isPremium && <Lock className="w-3 h-3 mr-1" />} 速度变化
+                </TabsTrigger>
               </TabsList>
             </Tabs>
           </div>
           
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="h-8">
+            <Button variant="outline" size="sm" className="h-8" disabled={!isPremium}>
               <Download className="w-4 h-4 mr-1" />
               导出数据
             </Button>
@@ -741,13 +788,21 @@ export default function TrajectoryReplay() {
         </div>
 
         {/* 地图区域 */}
-        <div className="flex-1 p-4">
+        <div className="flex-1 p-4 relative">
           <AMapTrajectoryView 
             trajectory={currentTrajectory}
             currentIndex={currentIndex}
             colorMode={colorMode}
             machine={selectedMachine}
           />
+          {!isPremium && (
+            <div className="absolute inset-0 bg-black/5 backdrop-blur-[1px] pointer-events-none flex items-center justify-center">
+              <div className="bg-white/90 p-4 rounded-2xl shadow-2xl border border-amber-200 flex items-center gap-3 animate-bounce pointer-events-auto">
+                <Crown className="w-6 h-6 text-amber-500" />
+                <span className="text-sm font-bold text-slate-900">升级黄金会员解锁高清产量热力图</span>
+              </div>
+            </div>
+          )}
         </div>
         
         {/* 播放控制栏 */}
@@ -783,6 +838,7 @@ export default function TrajectoryReplay() {
             <RealtimeDataPanel 
               currentPoint={currentPoint}
               machine={selectedMachine}
+              isLocked={!isPremium}
             />
             
             {/* 位置信息 */}
@@ -818,6 +874,7 @@ export default function TrajectoryReplay() {
             <TrajectoryStats 
               trajectory={currentTrajectory}
               dailyLog={dailyLog}
+              isLocked={!isPremium}
             />
           </TabsContent>
         </Tabs>

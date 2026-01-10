@@ -466,6 +466,15 @@ export default function CNHSidebar() {
         />
         
         <NavButton 
+          icon={Crown} 
+          label="会员中心" 
+          isActive={activeTab === "membership"}
+          onClick={() => {
+            setActiveTab("membership");
+            setLocation(`${base}/membership`);
+          }}
+        />
+        <NavButton 
           icon={Settings} 
           label="设置" 
           isActive={activeTab === "settings"}
@@ -824,7 +833,10 @@ export default function CNHSidebar() {
                 <Button
                   variant="outline"
                   className="w-full justify-start gap-2"
-                  onClick={() => setLocation(`${base}/onboarding`)}
+                  onClick={() => {
+                    setActiveTab("membership");
+                    setLocation(`${base}/membership`);
+                  }}
                 >
                   <Crown className="h-4 w-4 text-amber-600" />
                   会员中心 / 升级

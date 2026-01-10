@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Tractor, Search, MapPin, BadgeDollarSign, Phone, Clock } from "lucide-react";
+import { Tractor, Search, MapPin, BadgeDollarSign, Phone, Clock, AlertTriangle, ShieldCheck } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useLocation } from "wouter";
 
@@ -36,13 +36,14 @@ export default function MachineMarket() {
   const [location, navigate] = useLocation();
   const isSimulateMode = location.startsWith("/simulate");
   const { data: me } = trpc.auth.me.useQuery(undefined, { enabled: !isSimulateMode });
-  const canPublish = isSimulateMode || (me && ((me as any).role === "admin" || (me as any).verificationStatus === "approved"));
+  const { data: membership } = trpc.membership.summary.useQuery(undefined, { enabled: !isSimulateMode });
+  
+  const canPublish = isSimulateMode || (membership?.isActive);
   const { data: approvedListings } = trpc.machineListings.listApproved.useQuery(undefined, { enabled: !isSimulateMode });
   const [activeCategory, setActiveCategory] = useState<MachineCategory | "全部">("全部");
   const [keyword, setKeyword] = useState("");
 
   const filtered = useMemo(() => {
-    // 模拟模式：用内置样例；正式运行：用已审核通过的挂牌数据
     let list: any[] = isSimulateMode ? sampleMachineListings : (approvedListings ?? []);
     if (activeCategory !== "全部") {
       list = list.filter(item => item.category === activeCategory);
@@ -81,7 +82,7 @@ export default function MachineMarket() {
               className="bg-emerald-600 hover:bg-emerald-700 text-white"
               onClick={() => {
                 if (!canPublish) {
-                  navigate("/dashboard/onboarding");
+                  navigate("/dashboard/membership");
                   return;
                 }
                 navigate("/dashboard/publish-machine");
@@ -89,6 +90,21 @@ export default function MachineMarket() {
             >
               发布二手农机
             </Button>
+          </div>
+        </div>
+
+        {/* 免责声明与规则提示 */}
+        <div className="mb-4 glass-card bg-amber-500/10 border-amber-500/30 p-3 rounded-xl flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0" />
+            <p className="text-xs text-amber-100/90">
+              <span className="font-bold text-amber-400">规则提示：</span>
+              二手机联系方式对所有注册用户开放。请自行甄别风险，平台不对线下交易结果负责。
+            </p>
+          </div>
+          <div className="hidden md:flex items-center gap-2 text-[10px] text-emerald-400 font-medium uppercase tracking-widest">
+            <ShieldCheck className="w-3 h-3" />
+            安全交易保障
           </div>
         </div>
 
@@ -118,7 +134,7 @@ export default function MachineMarket() {
             <div className="relative flex-1">
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <Input
-                placeholder="按品牌 / 型号 / 地区搜索，如“拖拉机”、“久保田”、“黑龙江”"
+                placeholder="按品牌 / 型号 / 地区搜索..."
                 className="pl-9 bg-slate-900/60 border-slate-700 text-slate-100 placeholder:text-slate-500"
                 value={keyword}
                 onChange={(e) => setKeyword(e.target.value)}
@@ -139,7 +155,7 @@ export default function MachineMarket() {
           <ScrollArea className="h-full pr-2">
             {filtered.length === 0 ? (
               <div className="h-full flex items-center justify-center text-slate-300 text-sm">
-                暂无符合条件的挂牌设备，可以更换分类或关键词试试。
+                暂无符合条件的挂牌设备。
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-8">
@@ -182,12 +198,6 @@ export default function MachineMarket() {
                             已工作 {item.hoursUsed} 小时
                           </span>
                         )}
-                        {item.horsepower != null && (
-                          <span className="inline-flex items-center gap-1">
-                            <Tractor className="w-3 h-3" />
-                            {item.horsepower} 马力
-                          </span>
-                        )}
                       </div>
 
                       {item.description && (
@@ -205,9 +215,6 @@ export default function MachineMarket() {
                           <p className="text-[11px] text-slate-400">
                             卖家：{item.sellerName}（{item.sellerType}）
                           </p>
-                          <p className="text-[11px] text-slate-500">
-                            已浏览 {item.views} 次
-                          </p>
                         </div>
                         <div className="flex flex-col gap-2">
                           <Button
@@ -220,28 +227,8 @@ export default function MachineMarket() {
                             <Phone className="w-3 h-3" />
                             电话联系
                           </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="border-slate-600 text-slate-100 hover:bg-slate-800/80 text-[11px]"
-                          >
-                            收藏
-                          </Button>
                         </div>
                       </div>
-
-                      {item.tags && item.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-1 pt-1">
-                          {(item.tags as string[]).map((tag: string) => (
-                            <Badge
-                              key={tag}
-                              className="bg-slate-800/80 border-slate-600 text-[10px] text-slate-200"
-                            >
-                              {tag}
-                            </Badge>
-                          ))}
-                        </div>
-                      )}
                     </CardContent>
                   </Card>
                 ))}

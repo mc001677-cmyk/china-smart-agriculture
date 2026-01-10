@@ -37,7 +37,19 @@ export const users = mysqlTable("users", {
   membershipNote: text("membershipNote"),
   devicesOwned: int("devicesOwned").default(0).notNull(),
 
+  // 微信登录相关
+  wechatOpenid: varchar("wechatOpenid", { length: 128 }).unique(),
+  wechatUnionid: varchar("wechatUnionid", { length: 128 }).unique(),
+  phoneVerified: int("phoneVerified").default(0).notNull(), // 0: 未验证, 1: 已验证
+
   role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
+  // Admin 后台权限
+  isAdmin: int("isAdmin").default(0).notNull(), // 0: 普通用户, 1: 管理员
+  adminRole: mysqlEnum("adminRole", ["super_admin", "operation", "support"]), // 预留：管理员角色细分
+  // 账号状态
+  status: mysqlEnum("status", ["active", "frozen", "deleted"]).default("active").notNull(),
+  frozenAt: timestamp("frozenAt"),
+  frozenReason: text("frozenReason"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
@@ -344,8 +356,81 @@ export const workOrders = mysqlTable("workOrders", {
   fixedPrice: decimal("fixedPrice", { precision: 10, scale: 2 }),
   biddingStartPrice: decimal("biddingStartPrice", { precision: 10, scale: 2 }),
   status: mysqlEnum("status", ["open", "pending", "closed"]).default("open").notNull(),
+  contactName: varchar("contactName", { length: 64 }),
+  contactPhone: varchar("contactPhone", { length: 32 }),
+  contactWechat: varchar("contactWechat", { length: 64 }),
+  contactAddress: text("contactAddress"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
 export type WorkOrder = typeof workOrders.$inferSelect;
 export type InsertWorkOrder = typeof workOrders.$inferInsert;
+
+/**
+ * 验证码存储表 - 用于手机号验证码校验
+ */
+export const verificationCodes = mysqlTable("verificationCodes", {
+  id: int("id").autoincrement().primaryKey(),
+  phone: varchar("phone", { length: 32 }).notNull(),
+  scene: varchar("scene", { length: 32 }).notNull(), // register, login, resetPassword, bindPhone
+  codeHash: varchar("codeHash", { length: 256 }).notNull(),
+  expiresAt: timestamp("expiresAt").notNull(),
+  attempts: int("attempts").default(0).notNull(),
+  isUsed: int("isUsed").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (t) => ({
+  phoneSceneIdx: uniqueIndex("verificationCodes_phone_scene_idx").on(t.phone, t.scene, t.createdAt),
+}));
+
+export type VerificationCode = typeof verificationCodes.$inferSelect;
+export type InsertVerificationCode = typeof verificationCodes.$inferInsert;
+
+/**
+ * 系统配置表 - 键值对形式存储系统配置
+ */
+export const systemSettings = mysqlTable("systemSettings", {
+  id: int("id").autoincrement().primaryKey(),
+  key: varchar("key", { length: 128 }).notNull().unique(),
+  value: text("value").notNull(),
+  description: varchar("description", { length: 256 }),
+  category: varchar("category", { length: 64 }), // membership, sms, system
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedBy: int("updatedBy").references(() => users.id),
+});
+
+export type SystemSetting = typeof systemSettings.$inferSelect;
+export type InsertSystemSetting = typeof systemSettings.$inferInsert;
+
+/**
+ * 短信发送日志表 - 记录所有短信发送记录
+ */
+export const smsLogs = mysqlTable("smsLogs", {
+  id: int("id").autoincrement().primaryKey(),
+  phone: varchar("phone", { length: 32 }).notNull(),
+  scene: varchar("scene", { length: 32 }).notNull(), // register, login, resetPassword, bindPhone
+  provider: varchar("provider", { length: 32 }).notNull(), // MOCK, ALIYUN, TENCENT
+  status: mysqlEnum("status", ["success", "failed"]).notNull(),
+  errorMessage: text("errorMessage"),
+  requestId: varchar("requestId", { length: 128 }), // 服务商返回的请求ID
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type SmsLog = typeof smsLogs.$inferSelect;
+export type InsertSmsLog = typeof smsLogs.$inferInsert;
+
+/**
+ * 登录日志表 - 记录用户登录行为
+ */
+export const loginLogs = mysqlTable("loginLogs", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").references(() => users.id),
+  loginMethod: varchar("loginMethod", { length: 32 }).notNull(), // phone, wechat, oauth
+  status: mysqlEnum("status", ["success", "failed"]).notNull(),
+  ip: varchar("ip", { length: 64 }),
+  userAgent: text("userAgent"),
+  errorMessage: text("errorMessage"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type LoginLog = typeof loginLogs.$inferSelect;
+export type InsertLoginLog = typeof loginLogs.$inferInsert;

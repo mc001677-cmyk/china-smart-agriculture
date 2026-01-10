@@ -26,6 +26,8 @@ import IdentityApplication from "./IdentityApplication";
 import MachineRegistration from "./MachineRegistration";
 import AdminReview from "./AdminReview";
 import PublishMachineListing from "./PublishMachineListing";
+import MembershipCenter from "./MembershipCenter";
+import BindPhone from "./BindPhone";
 
 
 
@@ -202,6 +204,16 @@ export default function Dashboard({ mode = "run" }: DashboardProps) {
       {subpage === "publish-machine" && (
         <div className="absolute inset-0 z-20 pointer-events-auto">
           <PublishMachineListing />
+        </div>
+      )}
+      {subpage === "membership" && (
+        <div className="absolute inset-0 z-20 pointer-events-auto bg-background overflow-y-auto">
+          <MembershipCenter />
+        </div>
+      )}
+      {subpage === "bind-phone" && (
+        <div className="absolute inset-0 z-20 pointer-events-auto bg-background overflow-y-auto">
+          <BindPhone />
         </div>
       )}
     </DashboardLayout>

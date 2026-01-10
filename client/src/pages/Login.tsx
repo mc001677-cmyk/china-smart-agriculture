@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { Wheat, ChevronRight, User, Lock, ArrowLeft, ShieldCheck } from "lucide-react";
+import { Wheat, ChevronRight, User, Lock, ArrowLeft, ShieldCheck, MessageCircle } from "lucide-react";
 import { motion } from "framer-motion";
 
 const brands = [
@@ -20,6 +20,18 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [, setLocation] = useLocation();
+
+  const handleWechatLogin = async () => {
+    try {
+      const r = await fetch("/api/auth/wechatAuthorizeUrl");
+      const data = await r.json();
+      if (data.ok && data.data.url) {
+        window.location.href = data.data.url;
+      }
+    } catch (err) {
+      setError("获取微信授权地址失败");
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -204,6 +216,25 @@ export default function Login() {
                         进入控制台 <ChevronRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
                       </>
                     )}
+                  </Button>
+
+                  <div className="relative py-2">
+                    <div className="absolute inset-0 flex items-center">
+                      <span className="w-full border-t border-slate-200"></span>
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                      <span className="bg-white px-2 text-slate-500">或者使用</span>
+                    </div>
+                  </div>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleWechatLogin}
+                    className="w-full h-12 rounded-2xl border-slate-200 hover:bg-slate-50 text-slate-700 flex items-center justify-center gap-2"
+                  >
+                    <MessageCircle className="h-5 w-5 text-[#07C160]" />
+                    微信一键登录
                   </Button>
 
                   <div className="text-center text-xs text-slate-500 leading-relaxed">
