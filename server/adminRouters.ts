@@ -15,7 +15,8 @@ import {
   smsLogs,
   loginLogs,
   machines,
-  fields
+  fields,
+  machineApplications,
 } from "../drizzle/schema";
 import { eq, desc, gte, lte, and, or, like, sql, count } from "drizzle-orm";
 
@@ -859,6 +860,125 @@ export const adminRouter = router({
     matrix: adminProcedure.query(() => {
       return MEMBERSHIP_PERMISSIONS;
     }),
+  }),
+
+  /**
+   * 管理员审核（兼容旧接口）
+   */
+  adminReview: router({
+    listPending: adminProcedure.query(async () => {
+      const db = await getDb();
+      if (!db) return { users: [], machines: [], listings: [] };
+      const pendingUsers = await db.select().from(users).where(eq(users.verificationStatus, "pending")).orderBy(desc(users.verificationSubmittedAt));
+      const pendingMachines = await db.select().from(machineApplications).where(eq(machineApplications.status, "pending")).orderBy(desc(machineApplications.submittedAt));
+      const pendingListings = await db.select().from(machineListings).where(eq(machineListings.status, "pending")).orderBy(desc(machineListings.createdAt));
+      return { users: pendingUsers, machines: pendingMachines, listings: pendingListings };
+    }),
+
+    approveUser: adminProcedure
+      .input(z.object({ userId: z.number(), note: z.string().max(2000).optional() }))
+      .mutation(async ({ input, ctx }) => {
+        const db = await getDb();
+        if (!db) throw new Error("数据库不可用");
+        await db.update(users).set({
+          verificationStatus: "approved",
+          verificationReviewedAt: new Date(),
+          verificationNote: input.note ?? null,
+        }).where(eq(users.id, input.userId));
+        return { success: true } as const;
+      }),
+
+    rejectUser: adminProcedure
+      .input(z.object({ userId: z.number(), note: z.string().min(1).max(2000) }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new Error("数据库不可用");
+        await db.update(users).set({
+          verificationStatus: "rejected",
+          verificationReviewedAt: new Date(),
+          verificationNote: input.note,
+        }).where(eq(users.id, input.userId));
+        return { success: true } as const;
+      }),
+
+    approveMachine: adminProcedure
+      .input(z.object({ applicationId: z.number(), note: z.string().max(2000).optional() }))
+      .mutation(async ({ input, ctx }) => {
+        const db = await getDb();
+        if (!db) throw new Error("数据库不可用");
+        const app = await db.select().from(machineApplications).where(eq(machineApplications.id, input.applicationId)).limit(1);
+        const row = app[0];
+        if (!row) throw new Error("申请不存在");
+
+        await db.insert(machines).values({
+          name: `${row.brand} ${row.model}`,
+          type: row.type,
+          brand: row.brand,
+          model: row.model,
+          licensePlate: row.licensePlate,
+          deviceId: row.deviceId,
+          deviceSecret: row.deviceSecret,
+          status: "offline",
+          ownerId: row.applicantUserId,
+        });
+
+        await db.update(machineApplications).set({
+          status: "approved",
+          reviewedAt: new Date(),
+          reviewerUserId: ctx.user.id,
+          reviewNote: input.note ?? null,
+        }).where(eq(machineApplications.id, input.applicationId));
+
+        return { success: true } as const;
+      }),
+
+    rejectMachine: adminProcedure
+      .input(z.object({ applicationId: z.number(), note: z.string().min(1).max(2000) }))
+      .mutation(async ({ input, ctx }) => {
+        const db = await getDb();
+        if (!db) throw new Error("数据库不可用");
+
+        await db.update(machineApplications).set({
+          status: "rejected",
+          reviewedAt: new Date(),
+          reviewerUserId: ctx.user.id,
+          reviewNote: input.note,
+        }).where(eq(machineApplications.id, input.applicationId));
+
+        return { success: true } as const;
+      }),
+
+    approveListing: adminProcedure
+      .input(z.object({ listingId: z.number(), note: z.string().max(2000).optional() }))
+      .mutation(async ({ input, ctx }) => {
+        const db = await getDb();
+        if (!db) throw new Error("数据库不可用");
+
+        await db.update(machineListings).set({
+          status: "approved",
+          reviewedAt: new Date(),
+          reviewerUserId: ctx.user.id,
+          reviewNote: input.note ?? null,
+        }).where(eq(machineListings.id, input.listingId));
+
+        return { success: true } as const;
+      }),
+
+    rejectListing: adminProcedure
+      .input(z.object({ listingId: z.number(), note: z.string().min(1).max(2000) }))
+      .mutation(async ({ input, ctx }) => {
+        const db = await getDb();
+        if (!db) throw new Error("数据库不可用");
+
+        await db.update(machineListings).set({
+          status: "rejected",
+          reviewedAt: new Date(),
+          reviewerUserId: ctx.user.id,
+          reviewNote: input.note,
+        }).where(eq(machineListings.id, input.listingId));
+
+        return { success: true } as const;
+      }),
   }),
 });
 

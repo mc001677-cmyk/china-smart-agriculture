@@ -24,7 +24,6 @@ import OrderTracking from "./OrderTracking";
 import OnboardingCenter from "./OnboardingCenter";
 import IdentityApplication from "./IdentityApplication";
 import MachineRegistration from "./MachineRegistration";
-import AdminReview from "./AdminReview";
 import PublishMachineListing from "./PublishMachineListing";
 import MembershipCenter from "./MembershipCenter";
 import BindPhone from "./BindPhone";
@@ -194,11 +193,6 @@ export default function Dashboard({ mode = "run" }: DashboardProps) {
       {subpage === "machine-register" && (
         <div className="absolute inset-0 z-20 pointer-events-auto">
           <MachineRegistration />
-        </div>
-      )}
-      {subpage === "admin-review" && (
-        <div className="absolute inset-0 z-20 pointer-events-auto">
-          <AdminReview />
         </div>
       )}
       {subpage === "publish-machine" && (

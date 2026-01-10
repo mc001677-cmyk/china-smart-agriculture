@@ -62,7 +62,8 @@ function App() {
   return (
     <ErrorBoundary>
       <ThemeProvider
-        defaultTheme="light"
+        // 工业监控风：默认暗色主题（一次性上线版本以 dark 为主）
+        defaultTheme="dark"
         // switchable
       >
         <LanguageProvider>

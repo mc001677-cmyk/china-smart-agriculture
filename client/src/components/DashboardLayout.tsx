@@ -18,7 +18,7 @@ interface DashboardLayoutProps {
 }
 
 function DashboardMap({ mode }: { mode: "run" | "simulate" }) {
-  const { fleet, activeMachineId, selectedDate, getDailyTrajectory } = useFleet();
+  const { fleet, activeMachineId, selectedDate, getDailyTrajectory, setActiveMachineId } = useFleet();
   const { fields } = useField();
 
   const markers = useMemo(() => {
@@ -99,6 +99,16 @@ function DashboardMap({ mode }: { mode: "run" | "simulate" }) {
       markers={markers}
       trajectories={trajectories}
       completedFields={completedFields}
+      onFeatureClick={(f) => {
+        if (f?.type === "equipment" && f.id) {
+          const idNum = Number(f.id);
+          if (Number.isFinite(idNum)) {
+            setActiveMachineId(idNum);
+            // 若点击的是“当前已选中设备”，也强制拉起右侧详情
+            window.dispatchEvent(new Event("open-right-panel"));
+          }
+        }
+      }}
     />
   );
 }
@@ -107,7 +117,7 @@ export default function DashboardLayout({ children, mode = "run" }: DashboardLay
   return (
     <LanguageProvider>
       <FleetProvider>
-        <div className="h-screen w-screen flex flex-col overflow-hidden bg-[#f5f5f7] font-sans antialiased">
+        <div className="h-screen w-screen flex flex-col overflow-hidden bg-background text-foreground font-sans antialiased">
           {/* 顶部导航栏 */}
           <CNHHeader />
 

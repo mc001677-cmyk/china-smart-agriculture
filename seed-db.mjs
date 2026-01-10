@@ -19,15 +19,40 @@ if (!DATABASE_URL) {
 // Parse DATABASE_URL
 const url = new URL(DATABASE_URL);
 const connection = await mysql.createConnection({
-  host: url.hostname,
+  // FIX: 避免 localhost 的 socket/解析差异，统一走 TCP
+  host: url.hostname === "localhost" ? "127.0.0.1" : url.hostname,
   port: parseInt(url.port) || 3306,
   user: url.username,
-  password: url.password,
+  // FIX: Node URL.password 可能保留百分号编码（例如 %21），这里显式解码
+  password: decodeURIComponent(url.password),
   database: url.pathname.slice(1),
   ssl: { rejectUnauthorized: false },
 });
 
 console.log("Connected to database");
+
+async function ensureDemoOwner() {
+  const openId = "demo_owner";
+  const [rows] = await connection.execute(
+    "SELECT id FROM users WHERE openId = ? LIMIT 1",
+    [openId]
+  );
+  if (Array.isArray(rows) && rows.length > 0) {
+    return rows[0].id;
+  }
+
+  console.log("Creating demo owner user...");
+  const [result] = await connection.execute(
+    `INSERT INTO users (openId, name, loginMethod, role, membershipLevel)
+     VALUES (?, ?, ?, ?, ?)`,
+    [openId, "演示农场主", "seed", "user", "free"]
+  );
+  const insertedId = result?.insertId;
+  if (!insertedId) {
+    throw new Error("Failed to create demo owner user");
+  }
+  return insertedId;
+}
 
 // Seed Fields Data
 const fieldsData = [
@@ -51,7 +76,7 @@ const fieldsData = [
     harvestProgress: "35",
     avgYield: "850",
     avgMoisture: "14.5",
-    ownerId: 1,
+    ownerId: null,
   },
   {
     name: "建三江-02号地块",
@@ -73,7 +98,7 @@ const fieldsData = [
     harvestProgress: "0",
     avgYield: null,
     avgMoisture: null,
-    ownerId: 1,
+    ownerId: null,
   },
   {
     name: "建三江-03号地块",
@@ -95,7 +120,7 @@ const fieldsData = [
     harvestProgress: "100",
     avgYield: "920",
     avgMoisture: "15.2",
-    ownerId: 1,
+    ownerId: null,
   },
 ];
 
@@ -112,7 +137,7 @@ const machinesData = [
     currentSpeed: "5.2",
     fuelLevel: "65",
     assignedFieldId: 1,
-    ownerId: 1,
+    ownerId: null,
   },
   {
     name: "S780 收割机 (2号)",
@@ -125,7 +150,7 @@ const machinesData = [
     currentSpeed: "4.8",
     fuelLevel: "58",
     assignedFieldId: 1,
-    ownerId: 1,
+    ownerId: null,
   },
   {
     name: "8R 410 拖拉机 (转运1)",
@@ -138,7 +163,7 @@ const machinesData = [
     currentSpeed: "12.5",
     fuelLevel: "75",
     assignedFieldId: 1,
-    ownerId: 1,
+    ownerId: null,
   },
   {
     name: "8R 410 拖拉机 (转运2)",
@@ -151,7 +176,7 @@ const machinesData = [
     currentSpeed: "25.0",
     fuelLevel: "82",
     assignedFieldId: null,
-    ownerId: 1,
+    ownerId: null,
   },
   {
     name: "8R 410 拖拉机 (转运3)",
@@ -164,12 +189,14 @@ const machinesData = [
     currentSpeed: "0",
     fuelLevel: "90",
     assignedFieldId: null,
-    ownerId: 1,
+    ownerId: null,
   },
 ];
 
 async function seed() {
   try {
+    const ownerId = await ensureDemoOwner();
+
     // Clear existing data (use correct table names from schema)
     console.log("Clearing existing data...");
     await connection.execute("SET FOREIGN_KEY_CHECKS = 0");
@@ -194,7 +221,7 @@ async function seed() {
           field.harvestProgress,
           field.avgYield,
           field.avgMoisture,
-          field.ownerId,
+          ownerId,
         ]
       );
       console.log(`  ✓ Inserted field: ${field.name}`);
@@ -225,7 +252,7 @@ async function seed() {
           machine.currentSpeed,
           machine.fuelLevel,
           assignedFieldId,
-          machine.ownerId,
+          ownerId,
         ]
       );
       console.log(`  ✓ Inserted machine: ${machine.name}`);

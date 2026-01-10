@@ -208,34 +208,35 @@ export default function WorkMonitor() {
   };
 
   return (
-    <div className="h-full flex flex-col bg-gray-50">
+    // 地图工作台：使用“浮层”而非全屏遮罩（空白区域可操作地图）
+    <div className="h-full flex flex-col pointer-events-none">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
+      <div className="pointer-events-auto bg-card/80 backdrop-blur border-b border-border px-6 py-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-              <Activity className="w-6 h-6 text-green-600" />
+            <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+              <Activity className="w-6 h-6 text-primary" />
               作业监控
             </h1>
-            <p className="text-sm text-gray-500 mt-1">
+            <p className="text-sm text-muted-foreground mt-1">
               实时监控车队作业状态 · {format(new Date(), 'yyyy年MM月dd日 HH:mm', { locale: zhCN })}
             </p>
           </div>
           <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 bg-green-50 px-3 py-1.5 rounded-full">
-              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-              <span className="text-sm font-medium text-green-700">{workingMachines.length} 台作业中</span>
+            <div className="flex items-center gap-2 bg-emerald-500/15 px-3 py-1.5 rounded-full border border-emerald-500/25">
+              <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="text-sm font-medium text-emerald-200">{workingMachines.length} 台作业中</span>
             </div>
-            <div className="flex items-center gap-2 bg-blue-50 px-3 py-1.5 rounded-full">
-              <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
-              <span className="text-sm font-medium text-blue-700">{movingMachines.length} 台行驶中</span>
+            <div className="flex items-center gap-2 bg-sky-500/15 px-3 py-1.5 rounded-full border border-sky-500/25">
+              <div className="w-2 h-2 rounded-full bg-sky-400 animate-pulse" />
+              <span className="text-sm font-medium text-sky-200">{movingMachines.length} 台行驶中</span>
             </div>
           </div>
         </div>
       </div>
 
       {/* Summary Stats */}
-      <div className="px-6 py-4 grid grid-cols-5 gap-4">
+      <div className="pointer-events-auto px-6 py-4 grid grid-cols-5 gap-4">
         <SummaryCard 
           icon={Target} 
           title="今日作业面积" 
@@ -275,13 +276,13 @@ export default function WorkMonitor() {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 px-6 pb-6 overflow-hidden">
-        <Card className="h-full">
+      <div className="pointer-events-auto flex-1 px-6 pb-6 overflow-hidden">
+        <Card className="h-full bg-card/80 backdrop-blur border-border">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <CardTitle className="text-lg">设备实时状态</CardTitle>
               <Tabs value={selectedTab} onValueChange={setSelectedTab}>
-                <TabsList className="bg-gray-100">
+                <TabsList className="bg-muted">
                   <TabsTrigger value="all" className="text-xs">
                     全部 ({fleet.length})
                   </TabsTrigger>
@@ -306,7 +307,10 @@ export default function WorkMonitor() {
                     key={machine.id}
                     machine={machine}
                     isActive={activeMachineId === machine.id}
-                    onClick={() => setActiveMachineId(machine.id)}
+                    onClick={() => {
+                      setActiveMachineId(machine.id);
+                      window.dispatchEvent(new Event("open-right-panel"));
+                    }}
                   />
                 ))}
               </div>

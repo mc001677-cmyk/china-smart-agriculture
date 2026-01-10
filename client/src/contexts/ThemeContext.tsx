@@ -4,7 +4,8 @@ type Theme = "light" | "dark";
 
 interface ThemeContextType {
   theme: Theme;
-  toggleTheme?: () => void;
+  setTheme: (theme: Theme) => void;
+  toggleTheme: () => void;
   switchable: boolean;
 }
 
@@ -21,12 +22,10 @@ export function ThemeProvider({
   defaultTheme = "light",
   switchable = false,
 }: ThemeProviderProps) {
-  const [theme, setTheme] = useState<Theme>(() => {
-    if (switchable) {
-      const stored = localStorage.getItem("theme");
-      return (stored as Theme) || defaultTheme;
-    }
-    return defaultTheme;
+  const [theme, setThemeState] = useState<Theme>(() => {
+    // 即使 switchable 为 false，如果本地存储有值也优先读取，防止刷新闪烁
+    const stored = localStorage.getItem("theme");
+    return (stored as Theme) || defaultTheme;
   });
 
   useEffect(() => {
@@ -37,19 +36,19 @@ export function ThemeProvider({
       root.classList.remove("dark");
     }
 
-    if (switchable) {
-      localStorage.setItem("theme", theme);
-    }
-  }, [theme, switchable]);
+    localStorage.setItem("theme", theme);
+  }, [theme]);
 
-  const toggleTheme = switchable
-    ? () => {
-        setTheme(prev => (prev === "light" ? "dark" : "light"));
-      }
-    : undefined;
+  const setTheme = (newTheme: Theme) => {
+    setThemeState(newTheme);
+  };
+
+  const toggleTheme = () => {
+    setThemeState(prev => (prev === "light" ? "dark" : "light"));
+  };
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme, switchable }}>
+    <ThemeContext.Provider value={{ theme, setTheme, toggleTheme, switchable }}>
       {children}
     </ThemeContext.Provider>
   );

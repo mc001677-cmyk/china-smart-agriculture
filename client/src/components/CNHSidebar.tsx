@@ -10,6 +10,7 @@ import { useFleet, MachineData } from "@/contexts/FleetContext";
 import { BRAND_CONFIG } from "@/lib/mockData";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useLocation } from "wouter";
+import { getDashboardRouteInfo } from "@/lib/dashboardNav";
 
 // 苹果风格设计系统
 const APPLE_DESIGN = {
@@ -314,6 +315,12 @@ export default function CNHSidebar() {
   const [filterStatus, setFilterStatus] = useState<"all" | "working" | "low_fuel" | "harvester" | "tractor">("all");
   const [searchQuery, setSearchQuery] = useState("");
   const { fleet, activeMachineId, setActiveMachineId } = useFleet();
+
+  // 让左侧栏跟随路由自动高亮（与顶栏保持同一套路由解析逻辑）
+  const routeDrivenTab = useMemo(() => getDashboardRouteInfo(location)?.leftTab ?? null, [location]);
+  useEffect(() => {
+    if (routeDrivenTab) setActiveTab(routeDrivenTab);
+  }, [routeDrivenTab]);
   
   // 滚动相关状态
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -421,6 +428,17 @@ export default function CNHSidebar() {
     return stats;
   }, [fleet]);
 
+  const brandEntries = useMemo(() => {
+    return Object.entries(BRAND_CONFIG)
+      .map(([key, config]) => ({
+        key,
+        config,
+        count: brandStats[key] || 0,
+      }))
+      .filter(x => x.count > 0)
+      .sort((a, b) => b.count - a.count);
+  }, [brandStats]);
+
   return (
     <div className={cn(
       "flex h-full z-40 transition-all duration-500 ease-out relative pointer-events-auto",
@@ -514,12 +532,14 @@ export default function CNHSidebar() {
               {activeTab === "fleet" && "机队管理"}
               {activeTab === "maintenance" && "维保管理"}
               {activeTab === "analytics" && "数据分析"}
+              {activeTab === "membership" && "会员与认证"}
               {activeTab === "settings" && "系统设置"}
             </h2>
             <p className={cn(APPLE_DESIGN.text.caption, "mt-0.5")}>
               {activeTab === "fleet" && `${fleet.length} 台设备 · ${workingCount} 作业中`}
               {activeTab === "maintenance" && `${maintenanceStats.total} 项待处理`}
               {activeTab === "analytics" && "实时数据分析"}
+              {activeTab === "membership" && "升级会员 / 实名认证 / 绑定手机号"}
               {activeTab === "settings" && "系统配置"}
             </p>
           </div>
@@ -541,29 +561,28 @@ export default function CNHSidebar() {
               </div>
 
               {/* Brands */}
-              <div className="px-4 py-3 border-b border-gray-200/50">
-                <div className={cn(APPLE_DESIGN.text.small, "mb-2")}>Brands</div>
-                <div className="flex gap-2 flex-wrap">
-                  {Object.entries(BRAND_CONFIG).map(([key, config]) => (
-                    <div 
-                      key={key}
-                      className={cn(
-                        "flex items-center gap-1.5 px-2 py-1",
-                        APPLE_DESIGN.radius.full,
-                        "bg-white border border-gray-200/60",
-                        APPLE_DESIGN.shadow.sm,
-                      )}
-                    >
-                      <div 
-                        className="w-2.5 h-2.5 rounded-full"
-                        style={{ backgroundColor: config.color }}
-                      />
-                      <span className={APPLE_DESIGN.text.caption}>{config.name}</span>
-                      <span className="text-[11px] font-bold text-gray-600">{brandStats[key] || 0}</span>
-                    </div>
-                  ))}
+              {brandEntries.length > 0 && (
+                <div className="px-4 py-3 border-b border-gray-200/50">
+                  <div className={cn(APPLE_DESIGN.text.small, "mb-2")}>品牌</div>
+                  <div className="flex gap-2 flex-wrap">
+                    {brandEntries.map(({ key, config, count }) => (
+                      <div
+                        key={key}
+                        className={cn(
+                          "flex items-center gap-1.5 px-2 py-1",
+                          APPLE_DESIGN.radius.full,
+                          "bg-white border border-gray-200/60",
+                          APPLE_DESIGN.shadow.sm,
+                        )}
+                      >
+                        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: config.color }} />
+                        <span className={APPLE_DESIGN.text.caption}>{config.name}</span>
+                        <span className="text-[11px] font-bold text-gray-600">{count}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* 搜索栏 */}
               <div className="px-4 py-3 border-b border-gray-200/50">
@@ -621,7 +640,10 @@ export default function CNHSidebar() {
                           key={machine.id}
                           machine={machine}
                           isActive={activeMachineId === machine.id}
-                          onClick={() => setActiveMachineId(machine.id)}
+                          onClick={() => {
+                            setActiveMachineId(machine.id);
+                            window.dispatchEvent(new Event("open-right-panel"));
+                          }}
                         />
                       ))}
                     </div>
@@ -639,7 +661,10 @@ export default function CNHSidebar() {
                           key={machine.id}
                           machine={machine}
                           isActive={activeMachineId === machine.id}
-                          onClick={() => setActiveMachineId(machine.id)}
+                          onClick={() => {
+                            setActiveMachineId(machine.id);
+                            window.dispatchEvent(new Event("open-right-panel"));
+                          }}
                         />
                       ))}
                     </div>
@@ -657,7 +682,10 @@ export default function CNHSidebar() {
                           key={machine.id}
                           machine={machine}
                           isActive={activeMachineId === machine.id}
-                          onClick={() => setActiveMachineId(machine.id)}
+                          onClick={() => {
+                            setActiveMachineId(machine.id);
+                            window.dispatchEvent(new Event("open-right-panel"));
+                          }}
                         />
                       ))}
                     </div>
@@ -864,6 +892,41 @@ export default function CNHSidebar() {
                 >
                   <Database className="h-4 w-4 text-indigo-600" />
                   目录数据 / 地块管理
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* 会员与认证面板 */}
+          {activeTab === "membership" && (
+            <div className="flex-1 flex flex-col p-4 gap-3 overflow-y-auto">
+              <div className="flex items-center gap-2 text-gray-700 font-semibold">
+                <Crown size={18} className="text-amber-600" /> 会员与认证
+              </div>
+              <div className="space-y-2">
+                <Button
+                  variant="outline"
+                  className={cn("w-full justify-start gap-2", location.includes("/membership") && "border-amber-400 bg-amber-50")}
+                  onClick={() => setLocation(`${base}/membership`)}
+                >
+                  <Crown className="h-4 w-4 text-amber-600" />
+                  会员中心 / 升级
+                </Button>
+                <Button
+                  variant="outline"
+                  className={cn("w-full justify-start gap-2", location.includes("/identity") && "border-emerald-400 bg-emerald-50")}
+                  onClick={() => setLocation(`${base}/identity`)}
+                >
+                  <UserCircle className="h-4 w-4 text-emerald-600" />
+                  身份与实名认证
+                </Button>
+                <Button
+                  variant="outline"
+                  className={cn("w-full justify-start gap-2", location.includes("/bind-phone") && "border-blue-400 bg-blue-50")}
+                  onClick={() => setLocation(`${base}/bind-phone`)}
+                >
+                  <ShieldCheckIcon className="h-4 w-4 text-blue-600" />
+                  绑定手机号
                 </Button>
               </div>
             </div>

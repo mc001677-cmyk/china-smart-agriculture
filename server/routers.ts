@@ -12,6 +12,7 @@ import { eq, desc, gte, and, sql, count } from "drizzle-orm";
 import type { User as DbUser } from "../drizzle/schema";
 import { canViewJobContact, isActivePaidMember } from "./_core/membership";
 import { SmsServiceFactory, generateCode, hashCode } from "./services/sms";
+import { PaymentServiceFactory } from "./services/payment";
 import { wechatService } from "./services/wechat";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
@@ -69,7 +70,7 @@ export const appRouter = router({
         const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5分钟有效
 
         const smsService = SmsServiceFactory.getService();
-        const result = await smsService.sendVerificationCode(input.phone, input.scene);
+        const result = await smsService.sendVerificationCode(input.phone, input.scene, code);
 
         if (result.success) {
           await db.insert(verificationCodes).values({
@@ -304,122 +305,6 @@ export const appRouter = router({
       }),
   }),
 
-  // 管理员审核
-  adminReview: router({
-    listPending: adminProcedure.query(async () => {
-      const db = await getDb();
-      if (!db) return { users: [], machines: [], listings: [] };
-      const pendingUsers = await db.select().from(users).where(eq(users.verificationStatus, "pending")).orderBy(desc(users.verificationSubmittedAt));
-      const pendingMachines = await db.select().from(machineApplications).where(eq(machineApplications.status, "pending")).orderBy(desc(machineApplications.submittedAt));
-      const pendingListings = await db.select().from(machineListings).where(eq(machineListings.status, "pending")).orderBy(desc(machineListings.createdAt));
-      return { users: pendingUsers, machines: pendingMachines, listings: pendingListings };
-    }),
-
-    approveUser: adminProcedure
-      .input(z.object({ userId: z.number(), note: z.string().max(2000).optional() }))
-      .mutation(async ({ input, ctx }) => {
-        const db = await getDb();
-        if (!db) throw new Error("数据库不可用");
-        await db.update(users).set({
-          verificationStatus: "approved",
-          verificationReviewedAt: new Date(),
-          verificationNote: input.note ?? null,
-        }).where(eq(users.id, input.userId));
-        return { success: true } as const;
-      }),
-
-    rejectUser: adminProcedure
-      .input(z.object({ userId: z.number(), note: z.string().min(1).max(2000) }))
-      .mutation(async ({ input }) => {
-        const db = await getDb();
-        if (!db) throw new Error("数据库不可用");
-        await db.update(users).set({
-          verificationStatus: "rejected",
-          verificationReviewedAt: new Date(),
-          verificationNote: input.note,
-        }).where(eq(users.id, input.userId));
-        return { success: true } as const;
-      }),
-
-    approveMachine: adminProcedure
-      .input(z.object({ applicationId: z.number(), note: z.string().max(2000).optional() }))
-      .mutation(async ({ input, ctx }) => {
-        const db = await getDb();
-        if (!db) throw new Error("数据库不可用");
-        const app = await db.select().from(machineApplications).where(eq(machineApplications.id, input.applicationId)).limit(1);
-        const row = app[0];
-        if (!row) throw new Error("申请不存在");
-
-        await db.insert(machines).values({
-          name: `${row.brand} ${row.model}`,
-          type: row.type,
-          brand: row.brand,
-          model: row.model,
-          licensePlate: row.licensePlate,
-          deviceId: row.deviceId,
-          deviceSecret: row.deviceSecret,
-          status: "offline",
-          ownerId: row.applicantUserId,
-        });
-
-        await db.update(machineApplications).set({
-          status: "approved",
-          reviewedAt: new Date(),
-          reviewerUserId: ctx.user.id,
-          reviewNote: input.note ?? null,
-        }).where(eq(machineApplications.id, input.applicationId));
-
-        return { success: true } as const;
-      }),
-
-    rejectMachine: adminProcedure
-      .input(z.object({ applicationId: z.number(), note: z.string().min(1).max(2000) }))
-      .mutation(async ({ input, ctx }) => {
-        const db = await getDb();
-        if (!db) throw new Error("数据库不可用");
-
-        await db.update(machineApplications).set({
-          status: "rejected",
-          reviewedAt: new Date(),
-          reviewerUserId: ctx.user.id,
-          reviewNote: input.note,
-        }).where(eq(machineApplications.id, input.applicationId));
-
-        return { success: true } as const;
-      }),
-
-    approveListing: adminProcedure
-      .input(z.object({ listingId: z.number(), note: z.string().max(2000).optional() }))
-      .mutation(async ({ input, ctx }) => {
-        const db = await getDb();
-        if (!db) throw new Error("数据库不可用");
-
-        await db.update(machineListings).set({
-          status: "approved",
-          reviewedAt: new Date(),
-          reviewerUserId: ctx.user.id,
-          reviewNote: input.note ?? null,
-        }).where(eq(machineListings.id, input.listingId));
-
-        return { success: true } as const;
-      }),
-
-    rejectListing: adminProcedure
-      .input(z.object({ listingId: z.number(), note: z.string().min(1).max(2000) }))
-      .mutation(async ({ input, ctx }) => {
-        const db = await getDb();
-        if (!db) throw new Error("数据库不可用");
-
-        await db.update(machineListings).set({
-          status: "rejected",
-          reviewedAt: new Date(),
-          reviewerUserId: ctx.user.id,
-          reviewNote: input.note,
-        }).where(eq(machineListings.id, input.listingId));
-
-        return { success: true } as const;
-      }),
-  }),
 
   // 会员 & 认证权益
   membership: router({
@@ -462,7 +347,22 @@ export const appRouter = router({
           status: "pending",
         });
 
-        return { success: true, orderId: (inserted as any)?.insertId ?? null, amount: price };
+        let payUrl: string | undefined;
+        let paymentResult: any;
+
+        if (Number(price) > 0) {
+          const paymentService = PaymentServiceFactory.getService();
+          const res = await paymentService.createOrder({
+            id: (inserted as any).insertId.toString(),
+            amount: Number(price),
+            description: `${input.plan} Membership`,
+            userOpenId: ctx.user.openId
+          });
+          payUrl = res.payUrl;
+          paymentResult = res;
+        }
+
+        return { success: true, orderId: (inserted as any)?.insertId ?? null, amount: price, payUrl, paymentResult };
       }),
 
     mockPay: protectedProcedure

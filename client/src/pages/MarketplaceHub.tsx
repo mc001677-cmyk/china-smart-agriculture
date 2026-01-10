@@ -27,17 +27,20 @@ import {
 } from 'lucide-react';
 import { WorkOrder, WorkType } from '@/types/marketplace';
 import { hasPublishingAccess } from '@/lib/membershipAccess';
+import { SectionHeader } from '@/components/ui/section-header';
+import { ErrorBanner } from '@/components/ui/error-banner';
 
 const WORK_TYPES: WorkType[] = ['翻地', '平整', '播种', '施肥', '打药', '收割', '打包', '运输'];
 
 const STATUS_COLORS = {
-  '待抢单': 'bg-blue-100 text-blue-800',
-  '已接单': 'bg-yellow-100 text-yellow-800',
-  '进行中': 'bg-green-100 text-green-800',
-  '待验收': 'bg-purple-100 text-purple-800',
-  '已完成': 'bg-emerald-100 text-emerald-800',
-  '已取消': 'bg-gray-100 text-gray-800',
-  '争议中': 'bg-red-100 text-red-800',
+  // 工业监控暗色语义：半透明底 + 高可读前景
+  '待抢单': 'bg-sky-500/15 text-sky-200 border border-sky-500/25',
+  '已接单': 'bg-amber-500/15 text-amber-200 border border-amber-500/25',
+  '进行中': 'bg-emerald-500/15 text-emerald-200 border border-emerald-500/25',
+  '待验收': 'bg-violet-500/15 text-violet-200 border border-violet-500/25',
+  '已完成': 'bg-emerald-500/15 text-emerald-200 border border-emerald-500/25',
+  '已取消': 'bg-muted text-muted-foreground border border-border',
+  '争议中': 'bg-destructive/15 text-destructive-foreground border border-destructive/25',
 };
 
 export default function MarketplaceHub() {
@@ -57,6 +60,8 @@ export default function MarketplaceHub() {
   const [selectedWorkType, setSelectedWorkType] = useState<WorkType | 'all'>('all');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [searchText, setSearchText] = useState('');
+
+  const isAuthed = Boolean(isSimulateMode || me);
 
   useEffect(() => {
     let filtered = orders;
@@ -80,58 +85,81 @@ export default function MarketplaceHub() {
   }, [orders, selectedWorkType, selectedStatus, searchText]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-blue-50 p-6">
+    <div className="min-h-screen p-6 bg-background">
+      {!isSimulateMode && !me && (
+        <div className="mb-6">
+          <ErrorBanner
+            tone="info"
+            title="登录后可查看并发布作业需求"
+            description="未登录状态仅可浏览公开信息；登录后可查看个人权限、会员状态并进行发布/接单操作。"
+            right={
+              <div className="flex gap-2">
+                <Button onClick={() => navigate("/login")}>去登录</Button>
+                <Button variant="outline" onClick={() => navigate("/register")}>
+                  去注册
+                </Button>
+              </div>
+            }
+          />
+        </div>
+      )}
+
+      <SectionHeader
+        title="作业交易"
+        description="发布作业需求、抢单接单、跟踪进度与验收"
+      />
+
       {/* 顶部统计卡片 */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-        <Card className="bg-white/80 backdrop-blur-sm border-green-200 shadow-lg">
+        <Card className="bg-card border-border">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-green-600" />
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-primary" />
               总订单数
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-green-700">{stats.totalOrders}</div>
-            <p className="text-xs text-gray-500 mt-1">已完成 {stats.completedOrders} 单</p>
+            <div className="text-3xl font-bold text-foreground">{stats.totalOrders}</div>
+            <p className="text-xs text-muted-foreground mt-1">已完成 {stats.completedOrders} 单</p>
           </CardContent>
         </Card>
 
-        <Card className="bg-white/80 backdrop-blur-sm border-blue-200 shadow-lg">
+        <Card className="bg-card border-border">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
-              <MapPin className="h-4 w-4 text-blue-600" />
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <MapPin className="h-4 w-4 text-sky-400" />
               总作业面积
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-blue-700">{stats.totalVolume.toLocaleString()}</div>
-            <p className="text-xs text-gray-500 mt-1">亩</p>
+            <div className="text-3xl font-bold text-foreground">{stats.totalVolume.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground mt-1">亩</p>
           </CardContent>
         </Card>
 
-        <Card className="bg-white/80 backdrop-blur-sm border-purple-200 shadow-lg">
+        <Card className="bg-card border-border">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
-              <Users className="h-4 w-4 text-purple-600" />
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <Users className="h-4 w-4 text-violet-400" />
               活跃机手
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-purple-700">{stats.activeContractors}</div>
-            <p className="text-xs text-gray-500 mt-1">地主 {stats.activePublishers}</p>
+            <div className="text-3xl font-bold text-foreground">{stats.activeContractors}</div>
+            <p className="text-xs text-muted-foreground mt-1">地主 {stats.activePublishers}</p>
           </CardContent>
         </Card>
 
-        <Card className="bg-white/80 backdrop-blur-sm border-orange-200 shadow-lg">
+        <Card className="bg-card border-border">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
-              <AlertCircle className="h-4 w-4 text-orange-600" />
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 text-amber-400" />
               平台收入
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-orange-700">¥{(stats.platformRevenue / 10000).toFixed(1)}w</div>
-            <p className="text-xs text-gray-500 mt-1">1% 抽成</p>
+            <div className="text-3xl font-bold text-foreground">¥{(stats.platformRevenue / 10000).toFixed(1)}w</div>
+            <p className="text-xs text-muted-foreground mt-1">1% 抽成</p>
           </CardContent>
         </Card>
       </div>
@@ -139,11 +167,15 @@ export default function MarketplaceHub() {
       {/* 操作栏 */}
       <div className="flex flex-wrap gap-4 mb-6">
         <Button 
-          className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white shadow-lg"
+          className="bg-primary hover:bg-primary/90 text-primary-foreground"
           size="lg"
           onClick={() => {
             if (!canPublish) {
               navigate(to('membership'));
+              return;
+            }
+            if (!isAuthed) {
+              navigate("/login");
               return;
             }
             navigate(to('publish-order'));
@@ -154,7 +186,7 @@ export default function MarketplaceHub() {
         </Button>
         <Button 
           variant="outline"
-          className="border-blue-300 text-blue-700 hover:bg-blue-50"
+          className="border-border"
           size="lg"
           onClick={() => navigate(to('membership'))}
         >
@@ -163,7 +195,7 @@ export default function MarketplaceHub() {
         </Button>
         <Button 
           variant="outline"
-          className="border-purple-300 text-purple-700 hover:bg-purple-50"
+          className="border-border"
           size="lg"
           onClick={() => navigate(to('rating'))}
         >
@@ -172,7 +204,7 @@ export default function MarketplaceHub() {
         </Button>
         <Button 
           variant="outline"
-          className="border-orange-300 text-orange-700 hover:bg-orange-50"
+          className="border-border"
           size="lg"
           onClick={() => navigate(to('order-tracking'))}
         >
@@ -182,7 +214,7 @@ export default function MarketplaceHub() {
       </div>
 
       {/* 搜索和过滤 */}
-      <Card className="mb-6 bg-white/80 backdrop-blur-sm border-gray-200 shadow-lg">
+      <Card className="mb-6 bg-card border-border">
         <CardHeader>
           <CardTitle className="text-lg">搜索订单</CardTitle>
         </CardHeader>

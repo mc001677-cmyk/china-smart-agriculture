@@ -3,6 +3,8 @@ import FileUploader from "@/components/FileUploader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
+import { SectionHeader } from "@/components/ui/section-header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -131,20 +133,20 @@ export default function FileManager() {
     return (
       <DashboardLayout>
         <div className="p-6">
-          <Card className="border-slate-200">
-            <CardHeader>
-              <CardTitle>登录后管理文件</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-slate-600 space-y-3">
-              <p>上传与管理地块图片、报告等资料需要先登录。</p>
+          <Empty className="bg-card/40 border-border">
+            <EmptyHeader>
+              <EmptyTitle>登录后管理文件</EmptyTitle>
+              <EmptyDescription>上传与管理地块图片、无人机航拍、文档报告等资料需要先登录。</EmptyDescription>
+            </EmptyHeader>
+            <EmptyContent>
               <div className="flex gap-2">
                 <Button onClick={() => navigate("/login")}>去登录</Button>
                 <Button variant="outline" onClick={() => navigate("/register")}>
                   去注册
                 </Button>
               </div>
-            </CardContent>
-          </Card>
+            </EmptyContent>
+          </Empty>
         </div>
       </DashboardLayout>
     );
@@ -152,71 +154,66 @@ export default function FileManager() {
 
   return (
     <DashboardLayout>
-      <div className="p-6 space-y-6 bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen">
+      <div className="p-6 space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-800">文件管理</h1>
-            <p className="text-sm text-gray-500 mt-1">
-              管理地块图片、无人机航拍、文档报告等文件资源
-            </p>
-          </div>
-          <Button
-            onClick={() => setShowUploader(!showUploader)}
-            className="bg-primary hover:bg-primary/90"
-          >
-            <Upload className="h-4 w-4 mr-2" />
-            上传文件
-          </Button>
-        </div>
+        <SectionHeader
+          title="文件管理"
+          description="管理地块图片、无人机航拍、文档报告等文件资源"
+          right={
+            <Button onClick={() => setShowUploader(!showUploader)} className="bg-primary hover:bg-primary/90">
+              <Upload className="h-4 w-4 mr-2" />
+              上传文件
+            </Button>
+          }
+        />
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card className="bg-white/90 backdrop-blur border-0 shadow-lg">
+          <Card className="bg-card border-border">
             <CardContent className="p-4 flex items-center gap-4">
               <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
                 <FolderOpen className="h-6 w-6 text-primary" />
               </div>
               <div>
-                <p className="text-sm text-gray-500">文件总数</p>
-                <p className="text-2xl font-bold text-gray-800">{stats.total}</p>
+                <p className="text-sm text-muted-foreground">文件总数</p>
+                <p className="text-2xl font-bold text-foreground">{stats.total}</p>
               </div>
             </CardContent>
           </Card>
-          <Card className="bg-white/90 backdrop-blur border-0 shadow-lg">
+          <Card className="bg-card border-border">
             <CardContent className="p-4 flex items-center gap-4">
-              <div className="h-12 w-12 rounded-xl bg-blue-100 flex items-center justify-center">
-                <HardDrive className="h-6 w-6 text-blue-600" />
+              <div className="h-12 w-12 rounded-xl bg-sky-500/15 flex items-center justify-center">
+                <HardDrive className="h-6 w-6 text-sky-400" />
               </div>
               <div>
-                <p className="text-sm text-gray-500">存储空间</p>
-                <p className="text-2xl font-bold text-gray-800">
+                <p className="text-sm text-muted-foreground">存储空间</p>
+                <p className="text-2xl font-bold text-foreground">
                   {formatFileSize(stats.totalSize)}
                 </p>
               </div>
             </CardContent>
           </Card>
-          <Card className="bg-white/90 backdrop-blur border-0 shadow-lg">
+          <Card className="bg-card border-border">
             <CardContent className="p-4 flex items-center gap-4">
-              <div className="h-12 w-12 rounded-xl bg-green-100 flex items-center justify-center">
-                <Image className="h-6 w-6 text-green-600" />
+              <div className="h-12 w-12 rounded-xl bg-emerald-500/15 flex items-center justify-center">
+                <Image className="h-6 w-6 text-emerald-400" />
               </div>
               <div>
-                <p className="text-sm text-gray-500">图片文件</p>
-                <p className="text-2xl font-bold text-gray-800">
+                <p className="text-sm text-muted-foreground">图片文件</p>
+                <p className="text-2xl font-bold text-foreground">
                   {stats.byCategory.field_image + stats.byCategory.drone_image}
                 </p>
               </div>
             </CardContent>
           </Card>
-          <Card className="bg-white/90 backdrop-blur border-0 shadow-lg">
+          <Card className="bg-card border-border">
             <CardContent className="p-4 flex items-center gap-4">
-              <div className="h-12 w-12 rounded-xl bg-yellow-100 flex items-center justify-center">
-                <FileText className="h-6 w-6 text-yellow-600" />
+              <div className="h-12 w-12 rounded-xl bg-amber-500/15 flex items-center justify-center">
+                <FileText className="h-6 w-6 text-amber-400" />
               </div>
               <div>
-                <p className="text-sm text-gray-500">文档报告</p>
-                <p className="text-2xl font-bold text-gray-800">
+                <p className="text-sm text-muted-foreground">文档报告</p>
+                <p className="text-2xl font-bold text-foreground">
                   {stats.byCategory.document + stats.byCategory.report}
                 </p>
               </div>

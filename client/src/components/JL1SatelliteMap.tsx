@@ -2,13 +2,11 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Layers, ZoomIn, ZoomOut, Locate, Maximize2 } from 'lucide-react';
 
-// 吉林一号卫星影像配置（优先从环境变量读取，缺省回落到示例密钥）
-const DEFAULT_JL1_MK = "226bf902749f1630bc25fc720ba7c29f"; // 备份文档中的示例 MK
-const DEFAULT_JL1_TK = "0073bbg5c4266498b8f18225fe63a3fa"; // 备份文档中的示例 TK
-
-const JL1_MK = import.meta.env.VITE_JL1_MAP_MK || DEFAULT_JL1_MK;
-const JL1_TK = import.meta.env.VITE_JL1_MAP_TK || DEFAULT_JL1_TK;
+// 吉林一号卫星影像配置（从环境变量读取，避免把密钥写死在代码里）
+const JL1_MK = import.meta.env.VITE_JL1_MAP_MK || "";
+const JL1_TK = import.meta.env.VITE_JL1_MAP_TK || "";
 const JL1_BASE_URL = import.meta.env.VITE_JL1_MAP_BASE_URL ?? "https://api.jl1mall.com/getMap";
+const JL1_PRO = import.meta.env.VITE_JL1_MAP_PRO || ""; // 可选：企业版/项目ID
 const HAS_JL1_CREDS = Boolean(JL1_MK && JL1_TK);
 
 const JL1_CONFIG = {
@@ -17,9 +15,113 @@ const JL1_CONFIG = {
   getTileUrl: (z: number, x: number, y: number) => {
     // TMS 格式需要翻转 Y 轴（等价于瓦片模板中的 {-y}）
     const tmsY = Math.pow(2, z) - 1 - y;
-    return `${JL1_BASE_URL}/${z}/${x}/${tmsY}?mk=${JL1_MK}&tk=${JL1_TK}`;
+    const pro = JL1_PRO ? `&_pro=${encodeURIComponent(JL1_PRO)}` : "";
+    return `${JL1_BASE_URL}/${z}/${x}/${tmsY}?mk=${encodeURIComponent(JL1_MK)}&tk=${encodeURIComponent(JL1_TK)}${pro}`;
   },
 };
+
+const OL_CSS_URLS = [
+  "https://cdn.jsdelivr.net/npm/ol@7.5.2/ol.css",
+  "https://unpkg.com/ol@7.5.2/ol.css",
+];
+const OL_JS_URLS = [
+  "https://cdn.jsdelivr.net/npm/ol@7.5.2/dist/ol.js",
+  "https://unpkg.com/ol@7.5.2/dist/ol.js",
+];
+
+function ensureCss(urls: string[]) {
+  if (document.querySelector('link[data-ol-css="1"]')) return;
+  const link = document.createElement("link");
+  link.rel = "stylesheet";
+  link.href = urls[0];
+  link.setAttribute("data-ol-css", "1");
+  document.head.appendChild(link);
+}
+
+async function loadScript(src: string): Promise<void> {
+  // 已存在同 src 的脚本则复用
+  if (document.querySelector(`script[src="${src}"]`)) return;
+  await new Promise<void>((resolve, reject) => {
+    const s = document.createElement("script");
+    s.src = src;
+    s.async = true;
+    s.onload = () => resolve();
+    s.onerror = () => reject(new Error(`Failed to load script: ${src}`));
+    document.head.appendChild(s);
+  });
+}
+
+async function loadOlWithFallback(): Promise<void> {
+  if (window.ol) return;
+
+  // FIX: 优先加载本地 JL1 SDK（包含 OpenLayers 及相关依赖），避免外网 CDN 波动
+  try {
+    await loadScript("/JL1Map.umd.min.js");
+    if (window.ol) return;
+  } catch {
+    // ignore and fallback to CDN
+  }
+
+  for (const url of OL_JS_URLS) {
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const s = document.createElement("script");
+        s.src = url;
+        s.async = true;
+        s.setAttribute("data-ol-src", url);
+        s.onload = () => resolve();
+        s.onerror = () => reject(new Error(`Failed to load OpenLayers from ${url}`));
+        document.head.appendChild(s);
+      });
+
+      // 等待 ol 对象可用
+      await new Promise<void>((resolve, reject) => {
+        const start = Date.now();
+        const timer = window.setInterval(() => {
+          if (window.ol) {
+            window.clearInterval(timer);
+            resolve();
+          } else if (Date.now() - start > 8000) {
+            window.clearInterval(timer);
+            reject(new Error("Timeout waiting for window.ol"));
+          }
+        }, 50);
+      });
+
+      return;
+    } catch {
+      // 继续尝试下一 CDN
+      continue;
+    }
+  }
+  throw new Error("无法加载 OpenLayers（请检查网络或 CDN 可用性）");
+}
+
+async function probeJl1Tile(baseUrl: string, mk: string, tk: string): Promise<boolean> {
+  // FIX: 用一张瓦片做连通性探测，严格校验“真的可用”再切到 JL1
+  // - 兼容服务端返回 200 但头部 status=7103（常见为无权限/无数据/风控拦截占位）
+  // - 校验 Content-Type 必须为 image/*
+  try {
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => controller.abort(), 6000);
+    const pro = JL1_PRO ? `&_pro=${encodeURIComponent(JL1_PRO)}` : "";
+    const url = `${baseUrl}/1/1/1?mk=${encodeURIComponent(mk)}&tk=${encodeURIComponent(tk)}${pro}&_ts=${Date.now()}`;
+
+    const resp = await fetch(url, { method: "GET", signal: controller.signal, cache: "no-store" });
+    window.clearTimeout(timer);
+    if (!resp.ok) return false;
+
+    const ct = resp.headers.get("content-type") || "";
+    if (!ct.toLowerCase().startsWith("image/")) return false;
+
+    const jl1Status = resp.headers.get("status"); // 注意：这是“响应头字段名 status”，不是 HTTP status code
+    if (jl1Status && jl1Status !== "200") return false;
+
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 
 // 声明全局类型
@@ -35,6 +137,7 @@ interface JL1SatelliteMapProps {
   zoom?: number;
   className?: string;
   onMapReady?: (map: any) => void;
+  onFeatureClick?: (feature: { type?: 'equipment' | 'field' | 'warning'; id?: string; name?: string }) => void;
   markers?: Array<{
     id: string;
     position: [number, number];
@@ -66,6 +169,7 @@ const JL1SatelliteMap: React.FC<JL1SatelliteMapProps> = ({
   zoom = 12,
   className = '',
   onMapReady,
+  onFeatureClick,
   markers = [],
   trajectories = [],
   completedFields = [],
@@ -88,37 +192,9 @@ const JL1SatelliteMap: React.FC<JL1SatelliteMapProps> = ({
   // 加载 OpenLayers 和 JL1Map SDK
   useEffect(() => {
     const loadScripts = async () => {
-      // 加载 OpenLayers CSS
-      if (!document.querySelector('link[href*="ol.css"]')) {
-        const olCss = document.createElement('link');
-        olCss.rel = 'stylesheet';
-        olCss.href = 'https://cdn.jsdelivr.net/npm/ol@7.5.2/ol.css';
-        document.head.appendChild(olCss);
-      }
-
-      // 加载 OpenLayers JS
-      if (!window.ol) {
-        await new Promise<void>((resolve, reject) => {
-          const olScript = document.createElement('script');
-          olScript.src = 'https://cdn.jsdelivr.net/npm/ol@7.5.2/dist/ol.js';
-          olScript.async = true;
-          olScript.onload = () => resolve();
-          olScript.onerror = () => reject(new Error('无法加载 OpenLayers'));
-          document.head.appendChild(olScript);
-        });
-      }
-
-      // 等待 ol 对象可用
-      await new Promise<void>((resolve) => {
-        const checkOl = () => {
-          if (window.ol) {
-            resolve();
-          } else {
-            setTimeout(checkOl, 100);
-          }
-        };
-        checkOl();
-      });
+      // FIX: OpenLayers 使用多 CDN 回退，避免单点网络失败导致地图黑屏
+      ensureCss(OL_CSS_URLS);
+      await loadOlWithFallback();
     };
 
     const initMap = async () => {
@@ -128,6 +204,11 @@ const JL1SatelliteMap: React.FC<JL1SatelliteMapProps> = ({
         if (!mapContainerRef.current || !window.ol) return;
 
         const ol = window.ol;
+
+        // FIX: 若配置了吉林一号密钥，先做瓦片探测：失败则直接降级 OSM
+        const jl1TileOk = HAS_JL1_CREDS
+          ? await probeJl1Tile(JL1_BASE_URL, JL1_MK, JL1_TK)
+          : false;
 
         // 创建吉林一号卫星影像图层
         const jl1Layer = new ol.layer.Tile({
@@ -141,7 +222,6 @@ const JL1SatelliteMap: React.FC<JL1SatelliteMapProps> = ({
               const x = imageTile.getTileCoord()[1];
               const y = imageTile.getTileCoord()[2];
               // TMS Y 轴翻转
-              const tmsY = Math.pow(2, z) - 1 - y;
               const url = JL1_CONFIG.getTileUrl(z, x, y);
               const img: HTMLImageElement = imageTile.getImage();
               img.onerror = () => {
@@ -167,6 +247,16 @@ const JL1SatelliteMap: React.FC<JL1SatelliteMapProps> = ({
           setMapType('vector');
           setJl1Available(false);
           setBaseMapNotice('未配置吉林一号密钥，已自动切换到矢量底图（OSM）。请在 .env 配置 VITE_JL1_MAP_MK / VITE_JL1_MAP_TK');
+        } else if (!jl1TileOk) {
+          // 已配置但不可用：提示并降级
+          jl1Layer.setVisible(false);
+          osmLayer.setVisible(true);
+          setMapType('vector');
+          setJl1Available(false);
+          setBaseMapNotice('吉林一号卫星影像不可用：请检查 mk/tk 是否有效、网络是否可访问 jl1mall（已自动切换到 OSM）。');
+        } else {
+          setJl1Available(true);
+          setBaseMapNotice(null);
         }
 
         // ========= Vector Layers（一次初始化，后续动态更新 source）=========
@@ -305,6 +395,21 @@ const JL1SatelliteMap: React.FC<JL1SatelliteMapProps> = ({
           setCurrentZoom(newZoom);
         });
 
+        // 点击交互：点击点位/地块回调给上层（用于“地图工作台”联动）
+        map.on('singleclick', (evt: any) => {
+          try {
+            if (!onFeatureClick) return;
+            const feature = map.forEachFeatureAtPixel(evt.pixel, (f: any) => f);
+            if (!feature) return;
+            const type = feature.get('type');
+            const id = feature.get('id');
+            const name = feature.get('name');
+            onFeatureClick({ type, id, name });
+          } catch (e) {
+            console.warn('[JL1SatelliteMap] feature click failed:', e);
+          }
+        });
+
         // 初始化叠加层
         updateMarkers(markers, ol);
         updateCompletedFields(completedFields, ol);
@@ -351,6 +456,7 @@ const JL1SatelliteMap: React.FC<JL1SatelliteMapProps> = ({
         .filter(m => m.position && m.position.length === 2 && typeof m.position[0] === 'number' && typeof m.position[1] === 'number' && !isNaN(m.position[0]) && !isNaN(m.position[1]))
         .map((marker) => new ol.Feature({
           geometry: new ol.geom.Point(ol.proj.fromLonLat(marker.position)),
+          id: marker.id,
           name: marker.label,
           type: marker.type,
         }));
@@ -407,7 +513,9 @@ const JL1SatelliteMap: React.FC<JL1SatelliteMapProps> = ({
           const last = ring[ring.length - 1];
           if (first[0] !== last[0] || first[1] !== last[1]) ring.push(first);
           const feature = new ol.Feature({ geometry: new ol.geom.Polygon([ring]) });
+          feature.set('id', f.id);
           feature.set('name', f.label);
+          feature.set('type', 'field');
           const opacity = typeof f.opacity === 'number' ? f.opacity : 0.22;
           feature.set('fillColor', f.fillColor || `rgba(245, 158, 11, ${opacity})`);
           feature.set('strokeColor', f.strokeColor || 'rgba(217, 119, 6, 0.9)');

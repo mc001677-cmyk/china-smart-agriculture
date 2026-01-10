@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import { useFleet } from "@/contexts/FleetContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { trpc } from "@/lib/trpc";
+import { getDashboardRouteInfo } from "@/lib/dashboardNav";
 
 // 天气数据
 const weatherData = {
@@ -61,17 +62,7 @@ export default function CNHHeader() {
   const workingCount = fleet.filter(m => m.status === "working").length;
   const totalCount = fleet.length;
   
-  const getActiveTab = () => {
-    if (location.includes("work-monitor")) return "operations";
-    if (location.includes("trajectory")) return "history";
-    if (location.includes("yield-analysis")) return "yield";
-    if (location.includes("marketplace") || location.includes("publish-order") || location.includes("order-tracking") || location.includes("certification") || location.includes("rating")) return "marketplace";
-    if (location.includes("machine-market")) return "machine-market";
-    if (location.includes("smart-alerts")) return "alerts";
-    return "fleet";
-  };
-
-  const activeTab = getActiveTab();
+  const activeTab = getDashboardRouteInfo(location)?.topTab ?? "fleet";
 
   const userName = (me as any)?.name || (me as any)?.realName || "未登录";
   const userPhone = (me as any)?.phone || "";

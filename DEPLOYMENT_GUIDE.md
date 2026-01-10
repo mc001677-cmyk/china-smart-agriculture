@@ -1,8 +1,8 @@
-# 中国米胖子农业智能平台 - 部署指南
+# 友谊农场智慧农业平台 - 部署指南（已对齐当前代码）
 
 ## 项目信息
 
-**项目名称**: 迪尔智联数字农业平台（China Smart Agriculture Platform）
+**项目名称**: 友谊农场智慧农业平台（China Smart Agriculture Platform）
 
 **版本**: v1.8.0
 
@@ -15,13 +15,13 @@
 ## 技术栈
 
 ### 前端
-- **框架**: Vite 6.0 + React 19 + TypeScript 5.7
-- **样式**: TailwindCSS 3.4
+- **框架**: Vite 7.x + React 19 + TypeScript 5.9（以 `package.json` 为准）
+- **样式**: TailwindCSS 4.x（以 `package.json` 为准）
 - **UI组件**: Radix UI + Shadcn/ui
-- **地图**: 高德地图 JS API 2.0
+- **路由**: Wouter 3.x（以 `client/src/App.tsx` 为准）
+- **地图**: 当前正式运行以吉林一号 `JL1SatelliteMap` 为主；历史文档提到的高德仅供参考
 - **图表**: Recharts
-- **状态管理**: React Context API
-- **路由**: React Router v7
+- **状态管理**: React Context API + TanStack Query
 
 ### 后端
 - **运行时**: Node.js 22.13.0
@@ -67,14 +67,19 @@ china-rice-agriculture/
 
 ```env
 # 数据库配置
-DATABASE_URL=mysql://root:root@localhost:3306/rice_agriculture
+DATABASE_URL=mysql://user:password@localhost:3306/china_smart_agriculture
 
 # Manus OAuth（使用默认配置）
 # MANUS_OAUTH_CLIENT_ID=
 # MANUS_OAUTH_CLIENT_SECRET=
 
-# 高德地图API Key
-VITE_AMAP_KEY=your_amap_key_here
+# 吉林一号卫星影像（正式运行底图）
+VITE_JL1_MAP_MK=your_jl1_mk_here
+VITE_JL1_MAP_TK=your_jl1_tk_here
+# 可选：企业版/项目ID
+# VITE_JL1_MAP_PRO=your_project_id_here
+# 可选：自定义瓦片服务地址
+# VITE_JL1_MAP_BASE_URL=https://api.jl1mall.com/getMap
 
 # 服务器端口
 PORT=3000
@@ -85,7 +90,7 @@ PORT=3000
 ### 数据库创建
 
 ```sql
-CREATE DATABASE IF NOT EXISTS rice_agriculture 
+CREATE DATABASE IF NOT EXISTS china_smart_agriculture 
 CHARACTER SET utf8mb4 
 COLLATE utf8mb4_unicode_ci;
 ```
@@ -144,8 +149,8 @@ npm install -g pnpm
 
 ```bash
 # 解压项目文件
-unzip china-rice-agriculture-v9.0.zip
-cd china-rice-agriculture
+unzip china-smart-agriculture.zip
+cd china-smart-agriculture-src
 
 # 安装依赖
 pnpm install
@@ -213,7 +218,7 @@ server {
 - 实时查看所有设备状态
 - 设备分类筛选（作业中/行驶中/待命）
 - 设备搜索功能
-- 高德地图实时定位
+- 吉林一号卫星影像实时定位
 - 设备详情面板
 
 ### 2. 作业监控

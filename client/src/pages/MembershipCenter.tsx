@@ -3,6 +3,8 @@ import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { SectionHeader } from "@/components/ui/section-header";
+import { ErrorBanner } from "@/components/ui/error-banner";
 import { Check, Crown, Star, Sparkles, ShieldCheck, CreditCard, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -97,48 +99,53 @@ export default function MembershipCenter() {
   ];
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <div className="p-6 max-w-6xl mx-auto space-y-6">
       {/* Header Section */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">会员中心</h1>
-          <p className="text-muted-foreground mt-1">管理您的会员等级，解锁更多智慧农业能力</p>
-        </div>
-        {user && (
-          <div className="glass-card px-6 py-3 rounded-2xl flex items-center gap-4">
-            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-              <ShieldCheck className="w-6 h-6 text-primary" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-semibold">{user.name || "农场用户"}</span>
-                <Badge variant={user.membershipLevel === "free" ? "secondary" : "default"} className="bg-primary/20 text-primary border-none">
-                  {user.membershipLevel === "silver" ? "白银会员" : user.membershipLevel === "gold" ? "黄金会员" : "免费用户"}
-                </Badge>
+      <SectionHeader
+        title="会员中心"
+        description="管理会员等级，解锁更多作业协同与交易能力"
+        right={
+          user ? (
+            <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-2">
+              <div className="w-9 h-9 rounded-lg bg-primary/15 flex items-center justify-center">
+                <ShieldCheck className="w-5 h-5 text-primary" />
               </div>
-              {summary?.isActive && summary.membershipExpiresAt && (
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  有效期至：{format(new Date(summary.membershipExpiresAt), "yyyy年MM月dd日", { locale: zhCN })}
-                </p>
-              )}
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold truncate">{user.name || "农场用户"}</span>
+                  <Badge variant={user.membershipLevel === "free" ? "secondary" : "default"}>
+                    {user.membershipLevel === "silver"
+                      ? "白银会员"
+                      : user.membershipLevel === "gold"
+                        ? "黄金会员"
+                        : "免费用户"}
+                  </Badge>
+                </div>
+                {summary?.isActive && summary.membershipExpiresAt ? (
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    有效期至：{format(new Date(summary.membershipExpiresAt), "yyyy年MM月dd日", { locale: zhCN })}
+                  </p>
+                ) : null}
+              </div>
             </div>
-          </div>
-        )}
-      </div>
+          ) : null
+        }
+      />
 
       {!userLoading && !user && (
-        <div className="glass-card p-6 rounded-2xl border border-slate-200">
-          <h2 className="text-lg font-bold">登录后管理会员权益</h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            注册免费，可查看全部作业需求内容，但暂不支持查看农场主联系方式。白银会员 66 元/年，可查看全部农场主联系方式。
-          </p>
-          <div className="mt-4 flex gap-2">
-            <Button onClick={() => (window.location.href = "/login")}>去登录</Button>
-            <Button variant="outline" onClick={() => (window.location.href = "/register")}>
-              去注册
-            </Button>
-          </div>
-        </div>
+        <ErrorBanner
+          tone="info"
+          title="登录后管理会员权益"
+          description="注册免费可浏览作业需求内容；白银会员 66 元/年可查看农场主联系方式并发布需求。"
+          right={
+            <div className="flex gap-2">
+              <Button onClick={() => (window.location.href = "/login")}>去登录</Button>
+              <Button variant="outline" onClick={() => (window.location.href = "/register")}>
+                去注册
+              </Button>
+            </div>
+          }
+        />
       )}
 
       {/* Tiers Grid */}
@@ -146,7 +153,7 @@ export default function MembershipCenter() {
         {membershipTiers.map((tier) => (
           <Card 
             key={tier.id} 
-            className={`relative overflow-hidden border-none glass-card transition-apple hover:scale-[1.02] ${tier.popular ? 'ring-2 ring-primary/50' : ''}`}
+            className={`relative overflow-hidden border border-border bg-card ${tier.popular ? 'ring-2 ring-primary/50' : ''}`}
           >
             {tier.popular && (
               <div className="absolute top-0 right-0">
@@ -188,7 +195,7 @@ export default function MembershipCenter() {
                 </Button>
               ) : (
                 <Button 
-                  className="w-full rounded-xl shadow-apple" 
+                  className="w-full rounded-xl" 
                   disabled={tier.disabled || isProcessing}
                   onClick={tier.id === "silver" ? handleUpgrade : undefined}
                 >
@@ -206,7 +213,7 @@ export default function MembershipCenter() {
       </div>
 
       {/* Rules Notice */}
-      <div className="glass-card p-6 rounded-2xl border-l-4 border-primary">
+      <div className="p-6 rounded-2xl border border-border bg-card border-l-4 border-l-primary">
         <h3 className="font-bold flex items-center gap-2 mb-3">
           <ShieldCheck className="w-5 h-5 text-primary" />
           会员规则说明
