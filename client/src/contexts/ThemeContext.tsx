@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 
 type Theme = "light" | "dark";
+const THEME_STORAGE_KEY = "theme";
+const THEME_MIGRATION_KEY = "theme_migrated_default_light_20260110";
 
 interface ThemeContextType {
   theme: Theme;
@@ -24,9 +26,27 @@ export function ThemeProvider({
 }: ThemeProviderProps) {
   const [theme, setThemeState] = useState<Theme>(() => {
     // 即使 switchable 为 false，如果本地存储有值也优先读取，防止刷新闪烁
-    const stored = localStorage.getItem("theme");
+    const stored = localStorage.getItem(THEME_STORAGE_KEY);
     return (stored as Theme) || defaultTheme;
   });
+
+  useEffect(() => {
+    // 一次性迁移：过去版本默认暗色，且很多用户并没有“主动选择”。
+    // 为了响应“整体太黑”，将默认切为亮色；若用户确实想用暗色，可通过切换按钮再切回。
+    try {
+      const migrated = localStorage.getItem(THEME_MIGRATION_KEY);
+      if (!migrated) {
+        const stored = localStorage.getItem(THEME_STORAGE_KEY) as Theme | null;
+        if (defaultTheme === "light" && stored === "dark") {
+          setThemeState("light");
+        }
+        localStorage.setItem(THEME_MIGRATION_KEY, "1");
+      }
+    } catch {
+      // ignore
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -36,7 +56,7 @@ export function ThemeProvider({
       root.classList.remove("dark");
     }
 
-    localStorage.setItem("theme", theme);
+    localStorage.setItem(THEME_STORAGE_KEY, theme);
   }, [theme]);
 
   const setTheme = (newTheme: Theme) => {

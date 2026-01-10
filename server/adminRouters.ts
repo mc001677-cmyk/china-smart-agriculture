@@ -122,6 +122,12 @@ export const adminRouter = router({
       const [todayUsers] = await db.select({ count: count() }).from(users)
         .where(gte(users.createdAt, today));
 
+      // 待审核实名认证
+      const [pendingVerifications] = await db
+        .select({ count: count() })
+        .from(users)
+        .where(eq(users.verificationStatus, "pending"));
+
       // 会员等级分布
       const membershipStats = await db.select({
         level: users.membershipLevel,
@@ -169,6 +175,7 @@ export const adminRouter = router({
           admins: Number(userStats?.admins) || 0,
           frozen: Number(userStats?.frozen) || 0,
           todayNew: todayUsers?.count || 0,
+          pendingVerifications: pendingVerifications?.count || 0,
         },
         membership: membershipStats.reduce((acc, item) => {
           acc[item.level] = item.count;
@@ -627,16 +634,28 @@ export const adminRouter = router({
           note: input.note,
         }).where(eq(membershipOrders.id, input.orderId));
 
-        // 如果标记为已支付，更新用户会员等级
+        // 如果标记为已支付，更新用户权益
+        // FIX: membershipLevel 仅允许 free/silver/gold/diamond；device_bundle 不能直接写入，否则会触发 DB enum 错误。
         if (input.status === "paid") {
           const expiresAt = new Date();
           expiresAt.setFullYear(expiresAt.getFullYear() + 1);
 
-          await db.update(users).set({
-            membershipLevel: order.plan as any,
-            membershipExpiresAt: expiresAt,
-            membershipSource: "admin_manual",
-          }).where(eq(users.id, order.userId));
+          if (order.plan === "silver" || order.plan === "gold" || order.plan === "diamond") {
+            await db.update(users).set({
+              membershipLevel: order.plan as any,
+              membershipExpiresAt: expiresAt,
+              membershipSource: "admin_manual",
+            }).where(eq(users.id, order.userId));
+          } else if (order.plan === "device_bundle") {
+            // v0.1：device_bundle 仅增加 devicesOwned（如为空则按 0 处理）
+            const inc = Number((order as any).deviceCount ?? 0) || 0;
+            if (inc > 0) {
+              await db.update(users).set({
+                devicesOwned: sql`${users.devicesOwned} + ${inc}`,
+                membershipSource: "admin_manual",
+              }).where(eq(users.id, order.userId));
+            }
+          }
         }
 
         return { success: true };

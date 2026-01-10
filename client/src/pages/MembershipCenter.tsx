@@ -9,6 +9,7 @@ import { Check, Crown, Star, Sparkles, ShieldCheck, CreditCard, Loader2 } from "
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { zhCN } from "date-fns/locale";
+import { getCurrentPathWithQueryHash, toLoginPath, toRegisterPath } from "@/lib/authPaths";
 
 export default function MembershipCenter() {
   const { data: user, refetch: refetchUser, isLoading: userLoading } = trpc.auth.me.useQuery();
@@ -139,8 +140,8 @@ export default function MembershipCenter() {
           description="注册免费可浏览作业需求内容；白银会员 66 元/年可查看农场主联系方式并发布需求。"
           right={
             <div className="flex gap-2">
-              <Button onClick={() => (window.location.href = "/login")}>去登录</Button>
-              <Button variant="outline" onClick={() => (window.location.href = "/register")}>
+              <Button onClick={() => (window.location.href = toLoginPath(getCurrentPathWithQueryHash()))}>去登录</Button>
+              <Button variant="outline" onClick={() => (window.location.href = toRegisterPath(getCurrentPathWithQueryHash()))}>
                 去注册
               </Button>
             </div>

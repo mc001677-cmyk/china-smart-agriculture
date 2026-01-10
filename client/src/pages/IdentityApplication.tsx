@@ -7,15 +7,16 @@ import { trpc } from "@/lib/trpc";
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { ArrowLeft, ShieldCheck } from "lucide-react";
+import { toDashboardPath } from "@/lib/dashboardNav";
 
 export default function IdentityApplication() {
-  const [, navigate] = useLocation();
+  const [location, navigate] = useLocation();
   const utils = trpc.useUtils();
   const { data: me } = trpc.auth.me.useQuery();
   const submit = trpc.onboarding.submitIdentity.useMutation({
     onSuccess: async () => {
       await utils.auth.me.invalidate();
-      navigate("/dashboard/onboarding");
+      navigate(toDashboardPath(location, "onboarding"));
     },
   });
 
@@ -29,7 +30,7 @@ export default function IdentityApplication() {
     <div className="pointer-events-auto h-full w-full p-6 overflow-y-auto bg-gradient-to-br from-emerald-50 via-white to-amber-50">
       <div className="max-w-3xl mx-auto space-y-4">
         <div className="flex items-center justify-between">
-          <Button variant="ghost" onClick={() => navigate("/dashboard/onboarding")}>
+          <Button variant="ghost" onClick={() => navigate(toDashboardPath(location, "onboarding"))}>
             <ArrowLeft className="h-4 w-4 mr-1" />
             返回
           </Button>

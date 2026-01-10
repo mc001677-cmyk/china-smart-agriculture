@@ -8,6 +8,7 @@ import { trpc } from "@/lib/trpc";
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { ArrowLeft, Tractor } from "lucide-react";
+import { toDashboardPath } from "@/lib/dashboardNav";
 
 const BRAND_OPTIONS = [
   { id: "john_deere", label: "约翰迪尔（John Deere）" },
@@ -17,9 +18,9 @@ const BRAND_OPTIONS = [
 ];
 
 export default function MachineRegistration() {
-  const [, navigate] = useLocation();
+  const [location, navigate] = useLocation();
   const submit = trpc.onboarding.submitMachineApplication.useMutation({
-    onSuccess: () => navigate("/dashboard/onboarding"),
+    onSuccess: () => navigate(toDashboardPath(location, "onboarding")),
   });
 
   const [brand, setBrand] = useState("john_deere");
@@ -36,7 +37,7 @@ export default function MachineRegistration() {
     <div className="pointer-events-auto h-full w-full p-6 overflow-y-auto bg-gradient-to-br from-amber-50 via-white to-emerald-50">
       <div className="max-w-3xl mx-auto space-y-4">
         <div className="flex items-center justify-between">
-          <Button variant="ghost" onClick={() => navigate("/dashboard/onboarding")}>
+          <Button variant="ghost" onClick={() => navigate(toDashboardPath(location, "onboarding"))}>
             <ArrowLeft className="h-4 w-4 mr-1" />
             返回
           </Button>

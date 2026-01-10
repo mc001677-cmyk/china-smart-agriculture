@@ -2,11 +2,14 @@ import { useEffect, useState } from "react";
 import { useLocation, useSearch } from "wouter";
 import { Wheat } from "lucide-react";
 import { toast } from "sonner";
+import { getDefaultPostAuthPath, parseNextFromSearch, toLoginPath } from "@/lib/authPaths";
+import { toDashboardPath } from "@/lib/dashboardNav";
 
 export default function WechatCallback() {
   const [, setLocation] = useLocation();
   const search = useSearch();
   const [status, setStatus] = useState("正在处理微信登录...");
+  const next = parseNextFromSearch(search);
 
   useEffect(() => {
     const params = new URLSearchParams(search);
@@ -14,7 +17,7 @@ export default function WechatCallback() {
 
     if (!code) {
       toast.error("微信授权失败");
-      setLocation("/login");
+      setLocation(toLoginPath(next ?? undefined));
       return;
     }
 
@@ -30,17 +33,19 @@ export default function WechatCallback() {
         if (data.ok) {
           if (!data.hasPhone) {
             toast.info("登录成功，请绑定手机号以继续");
-            setLocation("/dashboard/bind-phone");
+            const postAuthBase = getDefaultPostAuthPath(next, "");
+            const bindBase = toDashboardPath(postAuthBase, "bind-phone");
+            setLocation(bindBase + (next ? `?next=${encodeURIComponent(next)}` : ""));
           } else {
             toast.success("登录成功");
-            setLocation("/dashboard");
+            setLocation(getDefaultPostAuthPath(next, ""));
           }
         } else {
           throw new Error(data.error || "登录失败");
         }
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "登录失败");
-        setLocation("/login");
+        setLocation(toLoginPath(next ?? undefined));
       }
     };
 

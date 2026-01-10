@@ -23,6 +23,7 @@ export default function AdminSettings() {
   const utils = trpc.useUtils();
   const { data: settings, isLoading } = trpc.admin.settings.list.useQuery();
   const updateSettings = trpc.admin.settings.update.useMutation();
+  const initDefaults = trpc.admin.settings.initDefaults.useMutation();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -78,7 +79,28 @@ export default function AdminSettings() {
 
   return (
     <div className="space-y-6 max-w-4xl">
-      <SectionHeader title="系统设置" description="调整系统参数与服务开关" />
+      <SectionHeader
+        title="系统设置"
+        description="调整系统参数与服务开关"
+        right={
+          <Button
+            variant="outline"
+            disabled={initDefaults.isPending}
+            onClick={async () => {
+              try {
+                await initDefaults.mutateAsync();
+                toast.success("已初始化默认配置");
+                utils.admin.settings.list.invalidate();
+              } catch (e: any) {
+                toast.error("初始化失败", { description: e.message });
+              }
+            }}
+          >
+            {initDefaults.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+            初始化默认配置
+          </Button>
+        }
+      />
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">

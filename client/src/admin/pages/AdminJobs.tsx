@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { SectionHeader } from "@/components/ui/section-header";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Search, MoreHorizontal, Ban, CheckCircle2, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { useLocation } from "wouter";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -25,6 +26,7 @@ import {
   } from "@/components/ui/dropdown-menu";
 
 export default function AdminJobs() {
+  const [location] = useLocation();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [inputValue, setInputValue] = useState("");
@@ -38,6 +40,19 @@ export default function AdminJobs() {
   });
 
   const setStatusMutation = trpc.admin.jobs.setStatus.useMutation();
+
+  // 兼容从仪表盘快捷入口进入：/admin/jobs?status=pending
+  useEffect(() => {
+    try {
+      const sp = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
+      const st = sp.get("status");
+      if (st === "open" || st === "pending" || st === "closed") {
+        setStatusFilter(st);
+      }
+    } catch {
+      // ignore
+    }
+  }, [location]);
 
   const handleSearch = () => {
     setPage(1);

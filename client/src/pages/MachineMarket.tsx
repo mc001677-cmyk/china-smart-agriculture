@@ -11,6 +11,8 @@ import { Tractor, Search, MapPin, BadgeDollarSign, Phone, Clock, AlertTriangle, 
 import { trpc } from "@/lib/trpc";
 import { useLocation } from "wouter";
 import { hasPublishingAccess } from "@/lib/membershipAccess";
+import { getDashboardBaseFromLocation, toDashboardPath } from "@/lib/dashboardNav";
+import { getCurrentPathWithQueryHash, toLoginPath, toRegisterPath } from "@/lib/authPaths";
 
 const CATEGORY_LABELS: { key: MachineCategory | "全部"; label: string }[] = [
   { key: "全部", label: "全部" },
@@ -35,7 +37,8 @@ const STATUS_COLOR: Record<string, string> = {
 
 export default function MachineMarket() {
   const [location, navigate] = useLocation();
-  const isSimulateMode = location.startsWith("/simulate");
+  const baseInfo = getDashboardBaseFromLocation(location);
+  const isSimulateMode = baseInfo?.mode === "simulate";
   const { data: me } = trpc.auth.me.useQuery(undefined, { enabled: !isSimulateMode });
   const { data: membership } = trpc.membership.summary.useQuery(undefined, {
     // FIX: membership.summary 为受保护接口；未登录时不要请求，避免页面报错
@@ -92,14 +95,14 @@ export default function MachineMarket() {
               className="bg-emerald-600 hover:bg-emerald-700 text-white"
               onClick={() => {
                 if (!isSimulateMode && !me) {
-                  navigate("/login");
+                  navigate(toLoginPath(getCurrentPathWithQueryHash()));
                   return;
                 }
                 if (!canPublish) {
-                  navigate("/dashboard/membership");
+                  navigate(toDashboardPath(location, "membership"));
                   return;
                 }
-                navigate("/dashboard/publish-machine");
+                navigate(toDashboardPath(location, "publish-machine"));
               }}
             >
               发布二手农机
@@ -114,10 +117,10 @@ export default function MachineMarket() {
               注册免费，可查看全部挂牌信息并直接联系卖家。
             </div>
             <div className="mt-3 flex gap-2">
-              <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => navigate("/login")}>
+              <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => navigate(toLoginPath(getCurrentPathWithQueryHash()))}>
                 去登录
               </Button>
-              <Button variant="outline" className="border-slate-600 text-slate-100 hover:bg-slate-800/80" onClick={() => navigate("/register")}>
+              <Button variant="outline" className="border-slate-600 text-slate-100 hover:bg-slate-800/80" onClick={() => navigate(toRegisterPath(getCurrentPathWithQueryHash()))}>
                 去注册
               </Button>
             </div>

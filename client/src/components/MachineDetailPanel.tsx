@@ -7,6 +7,7 @@ import { RadialBarChart, RadialBar, PolarAngleAxis, ResponsiveContainer } from '
 import { trpc } from "@/lib/trpc";
 import { Badge } from "@/components/ui/badge";
 import { Link, useLocation } from "wouter";
+import { toDashboardPath } from "@/lib/dashboardNav";
 
 interface MachineDetailPanelProps {
   machineId: number;
@@ -59,8 +60,6 @@ const DataCard = ({ label, value, unit, icon: Icon }: { label: string, value: st
 
 export default function MachineDetailPanel({ machineId, onClose }: MachineDetailPanelProps) {
   const [location] = useLocation();
-  const isSimulateMode = location.startsWith("/simulate");
-  const base = isSimulateMode ? "/simulate" : "/dashboard";
   const { getMachineById } = useFleet();
   const machine = getMachineById(machineId);
 
@@ -237,7 +236,7 @@ export default function MachineDetailPanel({ machineId, onClose }: MachineDetail
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider pl-1">最近作业</h3>
-                  <Link href={`${base}/worklogs`}>
+                  <Link href={toDashboardPath(location, "worklogs")}>
                     <a className="text-xs text-green-600 hover:text-green-700 font-medium flex items-center gap-1">
                       <Plus className="w-3 h-3" />
                       添加记录
@@ -281,7 +280,7 @@ export default function MachineDetailPanel({ machineId, onClose }: MachineDetail
                   <div className="text-center py-8 text-gray-400 text-sm">
                     <Clock className="w-8 h-8 mx-auto mb-2 opacity-50" />
                     <p>暂无作业记录</p>
-                    <Link href={`${base}/worklogs`}>
+                    <Link href={toDashboardPath(location, "worklogs")}>
                       <a className="text-green-600 hover:text-green-700 text-xs mt-1 inline-block">
                         前往添加
                       </a>

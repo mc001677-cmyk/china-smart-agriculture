@@ -29,6 +29,8 @@ import { WorkOrder, WorkType } from '@/types/marketplace';
 import { hasPublishingAccess } from '@/lib/membershipAccess';
 import { SectionHeader } from '@/components/ui/section-header';
 import { ErrorBanner } from '@/components/ui/error-banner';
+import { getDashboardBaseFromLocation, toDashboardPath } from "@/lib/dashboardNav";
+import { getCurrentPathWithQueryHash, toLoginPath, toRegisterPath } from "@/lib/authPaths";
 
 const WORK_TYPES: WorkType[] = ['翻地', '平整', '播种', '施肥', '打药', '收割', '打包', '运输'];
 
@@ -45,9 +47,9 @@ const STATUS_COLORS = {
 
 export default function MarketplaceHub() {
   const [location, navigate] = useLocation();
-  const isSimulateMode = location.startsWith("/simulate");
-  const base = isSimulateMode ? "/simulate" : "/dashboard";
-  const to = (subpage: string) => `${base}/${subpage}`;
+  const baseInfo = getDashboardBaseFromLocation(location);
+  const isSimulateMode = baseInfo?.mode === "simulate";
+  const to = (subpage: string) => toDashboardPath(location, subpage);
   const { data: me } = trpc.auth.me.useQuery(undefined, { enabled: !isSimulateMode });
   const { data: membership } = trpc.membership.summary.useQuery(undefined, {
     // FIX: membership.summary 是受保护接口，未登录时不要请求，避免页面报错
@@ -94,8 +96,8 @@ export default function MarketplaceHub() {
             description="未登录状态仅可浏览公开信息；登录后可查看个人权限、会员状态并进行发布/接单操作。"
             right={
               <div className="flex gap-2">
-                <Button onClick={() => navigate("/login")}>去登录</Button>
-                <Button variant="outline" onClick={() => navigate("/register")}>
+                <Button onClick={() => navigate(toLoginPath(getCurrentPathWithQueryHash()))}>去登录</Button>
+                <Button variant="outline" onClick={() => navigate(toRegisterPath(getCurrentPathWithQueryHash()))}>
                   去注册
                 </Button>
               </div>
@@ -175,7 +177,7 @@ export default function MarketplaceHub() {
               return;
             }
             if (!isAuthed) {
-              navigate("/login");
+              navigate(toLoginPath(getCurrentPathWithQueryHash()));
               return;
             }
             navigate(to('publish-order'));

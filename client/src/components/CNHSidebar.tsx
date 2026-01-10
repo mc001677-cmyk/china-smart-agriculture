@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from "react";
-import { Tractor, Wrench, ChevronLeft, Search, ChevronRight, Fuel, Wheat, AlertTriangle, Clock, CheckCircle, Calendar, Plus, ChevronUp, ChevronDown, Truck, Activity, Gauge, Zap, Settings, BarChart3, Crown, Database, ShieldCheck as ShieldCheckIcon, UserCircle } from "lucide-react";
+import { ChevronLeft, Search, ChevronRight, Fuel, Wheat, AlertTriangle, Clock, CheckCircle, Calendar, Plus, ChevronUp, ChevronDown, Truck, Activity, Gauge, Zap, Database, ShieldCheck as ShieldCheckIcon, UserCircle, Crown, Wrench, BarChart3 } from "lucide-react";
 import { HarvesterIcon, GrainCartIcon, BrandLogoMini, BRAND_COLORS } from "./MachineIcons";
 import { toast } from "sonner";
 import { Button } from "./ui/button";
@@ -10,7 +10,7 @@ import { useFleet, MachineData } from "@/contexts/FleetContext";
 import { BRAND_CONFIG } from "@/lib/mockData";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useLocation } from "wouter";
-import { getDashboardRouteInfo } from "@/lib/dashboardNav";
+import { DASHBOARD_LEFT_NAV, getDashboardRouteInfo, toDashboardPath } from "@/lib/dashboardNav";
 
 // 苹果风格设计系统
 const APPLE_DESIGN = {
@@ -308,19 +308,15 @@ const NavButton = ({ icon: Icon, label, isActive, badge, onClick }: {
 
 export default function CNHSidebar() {
   const [location, setLocation] = useLocation();
-  const isSimulateMode = location.startsWith("/simulate");
-  const base = isSimulateMode ? "/simulate" : "/dashboard";
-  const [activeTab, setActiveTab] = useState("fleet");
+  const basePath = toDashboardPath(location);
+  const { language, t } = useLanguage();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [filterStatus, setFilterStatus] = useState<"all" | "working" | "low_fuel" | "harvester" | "tractor">("all");
   const [searchQuery, setSearchQuery] = useState("");
   const { fleet, activeMachineId, setActiveMachineId } = useFleet();
 
   // 让左侧栏跟随路由自动高亮（与顶栏保持同一套路由解析逻辑）
-  const routeDrivenTab = useMemo(() => getDashboardRouteInfo(location)?.leftTab ?? null, [location]);
-  useEffect(() => {
-    if (routeDrivenTab) setActiveTab(routeDrivenTab);
-  }, [routeDrivenTab]);
+  const activeTab = useMemo(() => getDashboardRouteInfo(location)?.leftTab ?? "fleet", [location]);
   
   // 滚动相关状态
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -439,6 +435,8 @@ export default function CNHSidebar() {
       .sort((a, b) => b.count - a.count);
   }, [brandStats]);
 
+  const SettingsNavIcon = DASHBOARD_LEFT_NAV.find(x => x.id === "settings")?.icon ?? Database;
+
   return (
     <div className={cn(
       "flex h-full z-40 transition-all duration-500 ease-out relative pointer-events-auto",
@@ -461,43 +459,25 @@ export default function CNHSidebar() {
         </div>
 
         {/* 导航按钮 */}
-        <NavButton 
-          icon={Tractor} 
-          label="机队管理" 
-          isActive={activeTab === "fleet"}
-          onClick={() => setActiveTab("fleet")}
-        />
-        
-        <NavButton 
-          icon={Wrench} 
-          label="维保管理" 
-          isActive={activeTab === "maintenance"}
-          badge={maintenanceStats.total}
-          onClick={() => setActiveTab("maintenance")}
-        />
-        
-        <NavButton 
-          icon={BarChart3} 
-          label="数据分析" 
-          isActive={activeTab === "analytics"}
-          onClick={() => setActiveTab("analytics")}
-        />
-        
-        <NavButton 
-          icon={Crown} 
-          label="会员中心" 
-          isActive={activeTab === "membership"}
-          onClick={() => {
-            setActiveTab("membership");
-            setLocation(`${base}/membership`);
-          }}
-        />
-        <NavButton 
-          icon={Settings} 
-          label="设置" 
-          isActive={activeTab === "settings"}
-          onClick={() => setActiveTab("settings")}
-        />
+        {DASHBOARD_LEFT_NAV.map(item => (
+          <NavButton
+            key={item.id}
+            icon={item.icon}
+            label={
+              item.labelKey
+                ? (t.sidebar as any)[item.labelKey]
+                : language === "zh"
+                  ? (item.labelZh ?? item.id)
+                  : (item.labelEn ?? item.id)
+            }
+            isActive={activeTab === item.id}
+            badge={item.id === "maintenance" ? maintenanceStats.total : undefined}
+            onClick={() => {
+              const target = item.defaultSubpage ? `${basePath}/${item.defaultSubpage}` : basePath;
+              setLocation(target);
+            }}
+          />
+        ))}
 
         {/* 底部折叠按钮 */}
         <div className="flex-1" />
@@ -855,15 +835,14 @@ export default function CNHSidebar() {
           {activeTab === "settings" && (
             <div className="flex-1 flex flex-col p-4 gap-3 overflow-y-auto">
               <div className="flex items-center gap-2 text-gray-700 font-semibold">
-                <Settings size={18} /> 系统设置
+                <SettingsNavIcon size={18} /> 系统设置
               </div>
               <div className="space-y-2">
                 <Button
                   variant="outline"
                   className="w-full justify-start gap-2"
                   onClick={() => {
-                    setActiveTab("membership");
-                    setLocation(`${base}/membership`);
+                    setLocation(toDashboardPath(location, "membership"));
                   }}
                 >
                   <Crown className="h-4 w-4 text-amber-600" />
@@ -872,7 +851,7 @@ export default function CNHSidebar() {
                 <Button
                   variant="outline"
                   className="w-full justify-start gap-2"
-                  onClick={() => setLocation(`${base}/identity`)}
+                  onClick={() => setLocation(toDashboardPath(location, "identity"))}
                 >
                   <UserCircle className="h-4 w-4 text-emerald-600" />
                   身份与实名认证
@@ -880,7 +859,7 @@ export default function CNHSidebar() {
                 <Button
                   variant="outline"
                   className="w-full justify-start gap-2"
-                  onClick={() => setLocation(`${base}/machine-register`)}
+                  onClick={() => setLocation(toDashboardPath(location, "machine-register"))}
                 >
                   <ShieldCheckIcon className="h-4 w-4 text-blue-600" />
                   设备注册与绑定
@@ -888,10 +867,18 @@ export default function CNHSidebar() {
                 <Button
                   variant="outline"
                   className="w-full justify-start gap-2"
-                  onClick={() => setLocation(`${base}/fields`)}
+                  onClick={() => setLocation(toDashboardPath(location, "fields"))}
                 >
                   <Database className="h-4 w-4 text-indigo-600" />
                   目录数据 / 地块管理
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full justify-start gap-2"
+                  onClick={() => setLocation(toDashboardPath(location, "settings"))}
+                >
+                  <SettingsNavIcon className="h-4 w-4 text-gray-700" />
+                  打开设置中心（页面）
                 </Button>
               </div>
             </div>
@@ -907,7 +894,7 @@ export default function CNHSidebar() {
                 <Button
                   variant="outline"
                   className={cn("w-full justify-start gap-2", location.includes("/membership") && "border-amber-400 bg-amber-50")}
-                  onClick={() => setLocation(`${base}/membership`)}
+                  onClick={() => setLocation(toDashboardPath(location, "membership"))}
                 >
                   <Crown className="h-4 w-4 text-amber-600" />
                   会员中心 / 升级
@@ -915,7 +902,7 @@ export default function CNHSidebar() {
                 <Button
                   variant="outline"
                   className={cn("w-full justify-start gap-2", location.includes("/identity") && "border-emerald-400 bg-emerald-50")}
-                  onClick={() => setLocation(`${base}/identity`)}
+                  onClick={() => setLocation(toDashboardPath(location, "identity"))}
                 >
                   <UserCircle className="h-4 w-4 text-emerald-600" />
                   身份与实名认证
@@ -923,10 +910,18 @@ export default function CNHSidebar() {
                 <Button
                   variant="outline"
                   className={cn("w-full justify-start gap-2", location.includes("/bind-phone") && "border-blue-400 bg-blue-50")}
-                  onClick={() => setLocation(`${base}/bind-phone`)}
+                  onClick={() => setLocation(toDashboardPath(location, "bind-phone"))}
                 >
                   <ShieldCheckIcon className="h-4 w-4 text-blue-600" />
                   绑定手机号
+                </Button>
+                <Button
+                  variant="outline"
+                  className={cn("w-full justify-start gap-2", location.includes("/onboarding") && "border-slate-400 bg-slate-50")}
+                  onClick={() => setLocation(toDashboardPath(location, "onboarding"))}
+                >
+                  <Crown className="h-4 w-4 text-slate-700" />
+                  会员与认证中心（总览）
                 </Button>
               </div>
             </div>

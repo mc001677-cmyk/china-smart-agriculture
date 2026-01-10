@@ -3,9 +3,10 @@ import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useState } from "react";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { Wheat, ChevronRight, User, Lock, ArrowLeft, ShieldCheck, MessageCircle } from "lucide-react";
 import { motion } from "framer-motion";
+import { getDefaultPostAuthPath, parseNextFromSearch, toRegisterPath } from "@/lib/authPaths";
 
 const brands = [
   { id: "john_deere", name: "John Deere", color: "#367C2B", image: "/images/machines/john_deere_harvester.jpg" },
@@ -20,6 +21,8 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [, setLocation] = useLocation();
+  const search = useSearch();
+  const next = parseNextFromSearch(search);
 
   const handleWechatLogin = async () => {
     try {
@@ -49,7 +52,7 @@ export default function Login() {
         setError(code === "invalid_credentials" ? "账号或密码错误" : code);
         return;
       }
-      setLocation("/dashboard/onboarding");
+      setLocation(getDefaultPostAuthPath(next, "onboarding"));
     } catch (err) {
       setError(err instanceof Error ? err.message : "登录失败");
     } finally {
@@ -187,7 +190,7 @@ export default function Login() {
                     <button
                       type="button"
                       className="text-sm text-[#1f6b3a] font-semibold hover:underline"
-                      onClick={() => setLocation("/register")}
+                      onClick={() => setLocation(toRegisterPath(next ?? undefined))}
                     >
                       创建新账户
                     </button>

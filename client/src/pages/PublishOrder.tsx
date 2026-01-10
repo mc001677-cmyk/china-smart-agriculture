@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { WorkType } from '@/types/marketplace';
 import { hasPublishingAccess } from '@/lib/membershipAccess';
+import { getDashboardBaseFromLocation, toDashboardPath } from "@/lib/dashboardNav";
 
 const WORK_TYPES: WorkType[] = ['翻地', '平整', '播种', '施肥', '打药', '收割', '打包', '运输'];
 const CROP_TYPES = ['玉米', '大豆', '小麦', '水稻', '油菜', '其他'];
@@ -29,8 +30,8 @@ const PREFERRED_TIMES = ['上午', '下午', '全天', '不限'];
 
 export default function PublishOrder() {
   const [location, setLocation] = useLocation();
-  const isSimulateMode = location.startsWith("/simulate");
-  const base = isSimulateMode ? "/simulate" : "/dashboard";
+  const baseInfo = getDashboardBaseFromLocation(location);
+  const isSimulateMode = baseInfo?.mode === "simulate";
   const { data: me } = trpc.auth.me.useQuery(undefined, { enabled: !isSimulateMode });
   const { data: membership } = trpc.membership.summary.useQuery(undefined, {
     // FIX: membership.summary 为受保护接口；未登录时不要请求，避免页面报错
@@ -111,7 +112,7 @@ export default function PublishOrder() {
       }
       setPublishSuccess(true);
       setTimeout(() => {
-        setLocation(`${base}/marketplace`);
+        setLocation(toDashboardPath(location, "marketplace"));
       }, 1500);
     } catch (error) {
       alert('发布失败：' + (error instanceof Error ? error.message : '未知错误'));
@@ -142,10 +143,10 @@ export default function PublishOrder() {
             发布作业需求需开通「白银会员」（66元/年）。白银会员可解锁联系方式查看权限并获得发布资格。
           </p>
           <div className="flex flex-col gap-3">
-            <Button className="rounded-xl bg-primary hover:bg-primary/90 text-white h-12 shadow-apple" onClick={() => setLocation("/dashboard/membership")}>
+            <Button className="rounded-xl bg-primary hover:bg-primary/90 text-white h-12 shadow-apple" onClick={() => setLocation(toDashboardPath(location, "membership"))}>
               去开通白银会员
             </Button>
-            <Button variant="ghost" className="rounded-xl h-12" onClick={() => setLocation("/dashboard/marketplace")}>
+            <Button variant="ghost" className="rounded-xl h-12" onClick={() => setLocation(toDashboardPath(location, "marketplace"))}>
               返回交易大厅
             </Button>
           </div>

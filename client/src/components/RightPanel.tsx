@@ -8,6 +8,8 @@ import { Progress } from "./ui/progress";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "./ui/accordion";
 // Removed direct import
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useLocation } from "wouter";
+import { toDashboardPath } from "@/lib/dashboardNav";
 
 // Animated number component for smooth transitions
 const AnimatedValue = ({ value, decimals = 0 }: { value: number, decimals?: number }) => {
@@ -32,6 +34,7 @@ const AnimatedValue = ({ value, decimals = 0 }: { value: number, decimals?: numb
 
 export function RightPanel() {
   const { activeMachineId, fleet: machines, setActiveMachineId, selectedDate, setSelectedDate } = useFleet();
+  const [location, setLocation] = useLocation();
   const historyDate = new Date(selectedDate);
   const setHistoryDate = (date: Date) => setSelectedDate(date.toISOString().split('T')[0]);
   const isHistoryMode = selectedDate !== new Date().toISOString().split('T')[0];
@@ -521,11 +524,18 @@ export function RightPanel() {
       {/* Footer Actions */}
       <div className="p-4 border-t border-gray-100 bg-gray-50/50">
         <div className="grid grid-cols-2 gap-3">
-          <Button variant="outline" className="w-full text-xs font-bold h-9 bg-white hover:bg-gray-50">
+          <Button
+            variant="outline"
+            className="w-full text-xs font-bold h-9 bg-white hover:bg-gray-50"
+            onClick={() => setLocation(toDashboardPath(location, "maintenance"))}
+          >
             <Clock className="h-3.5 w-3.5 mr-2 text-gray-500" />
             维护保养
           </Button>
-          <Button className="w-full text-xs font-bold h-9 bg-[#2E7D32] hover:bg-[#1B5E20] text-white shadow-sm shadow-green-200">
+          <Button
+            className="w-full text-xs font-bold h-9 bg-[#2E7D32] hover:bg-[#1B5E20] text-white shadow-sm shadow-green-200"
+            onClick={() => setLocation(toDashboardPath(location, "trajectory"))}
+          >
             <MapIcon className="h-3.5 w-3.5 mr-2" />
             查看历史轨迹
           </Button>

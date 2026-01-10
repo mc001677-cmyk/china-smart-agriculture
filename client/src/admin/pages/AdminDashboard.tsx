@@ -99,9 +99,9 @@ export default function AdminDashboard() {
             <CardContent className="space-y-4">
                 <TodoItem 
                     title="待审核实名认证" 
-                    count={stats.users.todayNew > 0 ? "需确认" : 0} 
+                    count={stats.users.pendingVerifications} 
                     href="/admin/reviews"
-                    type="warning"
+                    type={stats.users.pendingVerifications > 0 ? "warning" : "success"}
                 />
                 <TodoItem 
                     title="待审核二手机挂牌" 

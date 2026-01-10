@@ -3,6 +3,9 @@ import { AdminSidebar } from "./AdminSidebar";
 import { Toaster } from "@/components/ui/sonner";
 import { trpc } from "@/lib/trpc";
 import { Loader2 } from "lucide-react";
+import { getCurrentPathWithQueryHash, toLoginPath } from "@/lib/authPaths";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -10,6 +13,7 @@ interface AdminLayoutProps {
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
   const { data: user, isLoading } = trpc.auth.me.useQuery();
+  const bootstrapAdmin = trpc.auth.bootstrapAdmin.useMutation();
 
   if (isLoading) {
     return (
@@ -20,17 +24,46 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   }
 
   if (!user || user.role !== "admin") {
-    // 简单的权限拦截，未登录或非管理员直接跳转登录页（或显示无权访问）
-    if (typeof window !== "undefined") {
-        // window.location.href = "/login"; // 暂时注释，避免无限跳转，改为显示错误
-    }
-    return (
-        <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-4">
-            <h1 className="text-2xl font-bold">无权访问</h1>
-            <p className="text-muted-foreground">该区域仅限管理员访问。</p>
-            <a href="/login" className="text-primary hover:underline">返回登录</a>
+    const isAdmin = !!user && ((user as any).role === "admin" || (user as any).isAdmin === 1);
+    if (isAdmin) {
+      // 兼容后端：adminProcedure 支持 role=admin 或 isAdmin=1
+      // 这里直接放行即可
+    } else {
+      return (
+        <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-4 px-6 text-center">
+          <h1 className="text-2xl font-bold">{user ? "无权访问" : "请先登录"}</h1>
+          <p className="text-muted-foreground">
+            {user ? "该区域仅限管理员访问。" : "后台管理仅对管理员开放，请先登录管理员账号。"}
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <a
+              href={toLoginPath(getCurrentPathWithQueryHash())}
+              className="text-primary hover:underline"
+            >
+              去登录
+            </a>
+
+            {import.meta.env.DEV && user ? (
+              <Button
+                variant="outline"
+                disabled={bootstrapAdmin.isPending}
+                onClick={async () => {
+                  try {
+                    await bootstrapAdmin.mutateAsync();
+                    toast.success("已初始化为管理员，正在刷新…");
+                    window.location.reload();
+                  } catch (e: any) {
+                    toast.error("初始化失败", { description: e?.message || "请查看控制台/服务端日志" });
+                  }
+                }}
+              >
+                一键初始化为管理员（仅本地开发）
+              </Button>
+            ) : null}
+          </div>
         </div>
-    );
+      );
+    }
   }
 
   return (

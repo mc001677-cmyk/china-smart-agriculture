@@ -3,12 +3,15 @@ import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useState } from "react";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { ArrowLeft, ChevronRight, Lock, Phone, User, Wheat, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
+import { getDefaultPostAuthPath, parseNextFromSearch, toLoginPath } from "@/lib/authPaths";
 
 export default function Register() {
   const [location, setLocation] = useLocation();
+  const search = useSearch();
+  const next = parseNextFromSearch(search);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
@@ -79,7 +82,7 @@ export default function Register() {
         return;
       }
       toast.success("注册成功");
-      setLocation("/dashboard/onboarding");
+      setLocation(getDefaultPostAuthPath(next, "onboarding"));
     } catch (err) {
       setError(err instanceof Error ? err.message : "注册失败");
     } finally {
@@ -95,7 +98,7 @@ export default function Register() {
 
       <div className="container mx-auto px-4 py-10 md:py-14 min-h-screen flex flex-col">
         <div className="flex items-center justify-between">
-          <Button variant="ghost" className="text-slate-700 hover:text-slate-900" onClick={() => setLocation("/login")}>
+          <Button variant="ghost" className="text-slate-700 hover:text-slate-900" onClick={() => setLocation(toLoginPath(next ?? undefined))}>
             <ArrowLeft className="mr-1 h-4 w-4" />
             返回登录
           </Button>

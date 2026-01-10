@@ -40,6 +40,7 @@ import { toast } from "sonner";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { useLocation } from "wouter";
+import { getCurrentPathWithQueryHash, toLoginPath, toRegisterPath } from "@/lib/authPaths";
 
 type FileCategory = "field_image" | "drone_image" | "document" | "report" | "other";
 
@@ -140,8 +141,8 @@ export default function FileManager() {
             </EmptyHeader>
             <EmptyContent>
               <div className="flex gap-2">
-                <Button onClick={() => navigate("/login")}>去登录</Button>
-                <Button variant="outline" onClick={() => navigate("/register")}>
+                <Button onClick={() => navigate(toLoginPath(getCurrentPathWithQueryHash()))}>去登录</Button>
+                <Button variant="outline" onClick={() => navigate(toRegisterPath(getCurrentPathWithQueryHash()))}>
                   去注册
                 </Button>
               </div>

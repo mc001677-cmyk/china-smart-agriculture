@@ -7,20 +7,21 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { ArrowLeft, CheckCircle2, ShoppingCart } from "lucide-react";
 import { trpc } from "@/lib/trpc";
+import { toDashboardPath } from "@/lib/dashboardNav";
 
 export default function PublishMachineListing() {
-  const [, navigate] = useLocation();
+  const [routeLocation, navigate] = useLocation();
   const utils = trpc.useUtils();
   const submit = trpc.machineListings.submit.useMutation({
     onSuccess: async () => {
-      await utils.adminReview.listPending.invalidate();
+      await utils.admin.adminReview.listPending.invalidate();
     },
   });
   const [title, setTitle] = useState("");
   const [brand, setBrand] = useState("");
   const [model, setModel] = useState("");
   const [price, setPrice] = useState("");
-  const [location, setLoc] = useState("");
+  const [listingLocation, setListingLocation] = useState("");
   const [desc, setDesc] = useState("");
   const [ok, setOk] = useState(false);
 
@@ -31,7 +32,7 @@ export default function PublishMachineListing() {
           <CheckCircle2 className="h-16 w-16 text-emerald-600 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-gray-800 mb-2">已提交挂牌信息</h2>
           <p className="text-gray-600">当前版本为演示流程，后续将接入真实挂牌与审核。</p>
-          <Button className="mt-5 rounded-2xl" onClick={() => navigate("/dashboard/machine-market")}>
+          <Button className="mt-5 rounded-2xl" onClick={() => navigate(toDashboardPath(routeLocation, "machine-market"))}>
             返回交易频道
           </Button>
         </Card>
@@ -43,7 +44,7 @@ export default function PublishMachineListing() {
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-white to-emerald-50 p-6 pointer-events-auto overflow-y-auto">
       <div className="max-w-3xl mx-auto space-y-4">
         <div className="flex items-center justify-between">
-          <Button variant="ghost" onClick={() => navigate("/dashboard/machine-market")}>
+          <Button variant="ghost" onClick={() => navigate(toDashboardPath(routeLocation, "machine-market"))}>
             <ArrowLeft className="h-4 w-4 mr-1" />
             返回
           </Button>
@@ -78,7 +79,7 @@ export default function PublishMachineListing() {
               </div>
               <div className="space-y-2">
                 <Label>所在地</Label>
-                <Input value={location} onChange={(e) => setLoc(e.target.value)} placeholder="例如：黑龙江·双鸭山" />
+                <Input value={listingLocation} onChange={(e) => setListingLocation(e.target.value)} placeholder="例如：黑龙江·双鸭山" />
               </div>
             </div>
             <div className="space-y-2">
@@ -96,7 +97,7 @@ export default function PublishMachineListing() {
                     brand,
                     model,
                     price: p !== undefined && Number.isFinite(p) ? p : undefined,
-                    location: location || undefined,
+                    location: listingLocation || undefined,
                     description: desc || undefined,
                   });
                   setOk(true);

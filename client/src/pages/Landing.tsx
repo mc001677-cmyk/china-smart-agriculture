@@ -13,6 +13,7 @@ import {
   Wheat,
 } from "lucide-react";
 import { useLocation } from "wouter";
+import { toLoginPath } from "@/lib/authPaths";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -72,7 +73,7 @@ export default function Landing() {
           <Button
             variant="ghost"
             className="text-slate-700 hover:text-slate-900"
-            onClick={() => navigate("/login")}
+            onClick={() => navigate(toLoginPath("/admin"))}
           >
             管理员登录 <ArrowRight className="ml-1 h-4 w-4" />
           </Button>
@@ -106,7 +107,7 @@ export default function Landing() {
               <Button
                 size="lg"
                 className="h-14 rounded-2xl bg-[#1f6b3a] hover:bg-[#1b5f33] text-white shadow-lg shadow-emerald-900/15"
-                onClick={() => navigate("/login")}
+                onClick={() => navigate(toLoginPath("/dashboard/onboarding"))}
               >
                 <Database className="mr-2 h-5 w-5" />
                 正式运行登录

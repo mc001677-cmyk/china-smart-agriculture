@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -7,9 +7,12 @@ import { Label } from "@/components/ui/label";
 import { Phone, ShieldCheck, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { APPLE_DESIGN, cn } from "@/lib/utils";
+import { getDefaultPostAuthPath, parseNextFromSearch } from "@/lib/authPaths";
 
 export default function BindPhone() {
   const [, setLocation] = useLocation();
+  const search = useSearch();
+  const next = parseNextFromSearch(search);
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -67,7 +70,7 @@ export default function BindPhone() {
       const data = await r.json();
       if (data.ok) {
         toast.success("手机号绑定成功");
-        setLocation("/dashboard");
+        setLocation(getDefaultPostAuthPath(next, ""));
       } else {
         toast.error(data.error || "绑定失败");
       }

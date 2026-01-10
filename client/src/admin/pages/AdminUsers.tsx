@@ -37,6 +37,7 @@ export default function AdminUsers() {
 
   const setStatusMutation = trpc.admin.users.setStatus.useMutation();
   const setAdminMutation = trpc.admin.users.setAdmin.useMutation();
+  const setMembershipMutation = trpc.admin.users.setMembership.useMutation();
 
   const handleSearch = () => {
     setPage(1);
@@ -67,6 +68,30 @@ export default function AdminUsers() {
         refetch();
     } catch (e: any) {
         toast.error("操作失败", { description: e.message });
+    }
+  };
+
+  const handleSetMembership = async (userId: number) => {
+    const level = (window.prompt("设置会员等级：free/silver/gold/diamond", "silver") || "").trim();
+    if (!level) return;
+    if (!["free", "silver", "gold", "diamond"].includes(level)) {
+      toast.error("会员等级不合法");
+      return;
+    }
+    const expiresAt = (window.prompt("到期日期（可选，YYYY-MM-DD）", "") || "").trim();
+    const note = (window.prompt("备注（可选）", "") || "").trim();
+
+    try {
+      await setMembershipMutation.mutateAsync({
+        userId,
+        level: level as any,
+        expiresAt: expiresAt ? new Date(expiresAt).toISOString() : undefined,
+        note: note || undefined,
+      });
+      toast.success("会员等级已更新");
+      refetch();
+    } catch (e: any) {
+      toast.error("操作失败", { description: e.message });
     }
   };
 
@@ -161,6 +186,10 @@ export default function AdminUsers() {
                                         <DropdownMenuLabel>操作</DropdownMenuLabel>
                                         <DropdownMenuItem onClick={() => navigator.clipboard.writeText(user.phone || "")}>
                                             复制手机号
+                                        </DropdownMenuItem>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem onClick={() => handleSetMembership(user.id)}>
+                                            修改会员等级
                                         </DropdownMenuItem>
                                         <DropdownMenuSeparator />
                                         <DropdownMenuItem onClick={() => handleToggleStatus(user.id, user.status as string)}>

@@ -27,6 +27,7 @@ import MachineRegistration from "./MachineRegistration";
 import PublishMachineListing from "./PublishMachineListing";
 import MembershipCenter from "./MembershipCenter";
 import BindPhone from "./BindPhone";
+import SettingsCenter from "./SettingsCenter";
 
 
 
@@ -208,6 +209,11 @@ export default function Dashboard({ mode = "run" }: DashboardProps) {
       {subpage === "bind-phone" && (
         <div className="absolute inset-0 z-20 pointer-events-auto bg-background overflow-y-auto">
           <BindPhone />
+        </div>
+      )}
+      {subpage === "settings" && (
+        <div className="absolute inset-0 z-20 pointer-events-auto bg-background overflow-y-auto">
+          <SettingsCenter />
         </div>
       )}
     </DashboardLayout>

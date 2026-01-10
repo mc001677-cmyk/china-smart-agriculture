@@ -1,9 +1,8 @@
-import { Globe, Tractor, Map, Activity, BarChart3, AlertTriangle, ChevronDown, Download, Maximize, Sun, Wind, Wheat, Languages, ShieldCheck, User, Crown, LogOut, UserPlus } from "lucide-react";
+import { Globe, ChevronDown, Maximize, Sun, Moon, Wind, Wheat, Languages, ShieldCheck, User, Crown, LogOut, UserPlus } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 import { Button } from "./ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,8 +17,10 @@ import { Badge } from "./ui/badge";
 import { cn } from "@/lib/utils";
 import { useFleet } from "@/contexts/FleetContext";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useTheme } from "@/contexts/ThemeContext";
 import { trpc } from "@/lib/trpc";
-import { getDashboardRouteInfo } from "@/lib/dashboardNav";
+import { DASHBOARD_TOP_NAV, getDashboardRouteInfo, toDashboardPath } from "@/lib/dashboardNav";
+import { getCurrentPathWithQueryHash, toLoginPath } from "@/lib/authPaths";
 
 // 天气数据
 const weatherData = {
@@ -36,12 +37,11 @@ export default function CNHHeader() {
   const [location, setLocation] = useLocation();
   const { unresolvedAlertCount, fleet, allLogs } = useFleet();
   const { language, toggleLanguage, t } = useLanguage();
+  const { theme, setTheme } = useTheme();
   const [currentTime, setCurrentTime] = useState(new Date());
   const { data: me } = trpc.auth.me.useQuery(undefined, { retry: 0 });
   const logout = trpc.auth.logout.useMutation();
-  const isSimulateMode = location.startsWith("/simulate");
-  const base = isSimulateMode ? "/simulate" : "/dashboard";
-  const to = (subpage?: string) => (subpage ? `${base}/${subpage}` : base);
+  const basePath = toDashboardPath(location);
   
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -80,16 +80,17 @@ export default function CNHHeader() {
           ? (language === "zh" ? "已驳回" : "Rejected")
           : (language === "zh" ? "未提交" : "Unsubmitted");
 
-  const tabs = [
-    // 注意：模拟运行必须保持 /simulate 前缀，否则会“跳回正式运行”
-    { id: "fleet", label: t.nav.fleet, icon: Tractor, path: to() },
-    { id: "operations", label: t.nav.operations, icon: Map, path: to("work-monitor") },
-    { id: "history", label: t.nav.trajectory, icon: Activity, path: to("trajectory") },
-    { id: "yield", label: t.nav.yield, icon: BarChart3, path: to("yield-analysis") },
-    { id: "marketplace", label: t.nav.marketplace || "作业交易", icon: ShoppingCart, path: to("marketplace") },
-    { id: "machine-market", label: "农机设备交易", icon: ShoppingCart, path: to("machine-market") },
-    { id: "alerts", label: t.nav.alerts, icon: AlertTriangle, path: to("smart-alerts"), badge: unresolvedAlertCount },
-  ];
+  const tabs = DASHBOARD_TOP_NAV.map(tab => {
+    const label =
+      tab.labelKey
+        ? (t.nav as any)[tab.labelKey]
+        : language === "zh"
+          ? (tab.labelZh ?? tab.id)
+          : (tab.labelEn ?? tab.id);
+    const path = tab.subpage ? `${basePath}/${tab.subpage}` : basePath;
+    const badge = tab.id === "alerts" ? unresolvedAlertCount : undefined;
+    return { ...tab, label, path, badge };
+  });
 
   const CurrentIcon = userRole === "admin" ? ShieldCheck : User;
   const WeatherIcon = weatherData.current.icon;
@@ -174,6 +175,17 @@ export default function CNHHeader() {
             <span className="hidden sm:inline">{language === 'zh' ? 'EN' : '中'}</span>
           </Button>
 
+          {/* 主题切换按钮：默认亮色，仍可切回暗色 */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+            className="h-9 w-9 text-white hover:bg-[#0d3d16] border border-[#3d9e4d] rounded-lg bg-[#228b3b]/50 shadow-md backdrop-blur-sm"
+            title={theme === "light" ? "切换到暗色" : "切换到亮色"}
+          >
+            {theme === "light" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+          </Button>
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="h-9 px-2.5 text-white hover:bg-[#0d3d16] flex items-center gap-1.5 border border-[#3d9e4d] rounded-lg bg-[#228b3b]/50 shadow-md backdrop-blur-sm">
@@ -217,14 +229,14 @@ export default function CNHHeader() {
                 <Button
                   variant="outline"
                   className="w-full rounded-xl text-xs"
-                  onClick={() => setLocation("/dashboard/onboarding")}
+                  onClick={() => setLocation(toDashboardPath(location, "onboarding"))}
                 >
                   {language === 'zh' ? '去注册与审核中心' : 'Go to onboarding'}
                 </Button>
                 <Button
                   variant="outline"
                   className="w-full rounded-xl text-xs"
-                  onClick={() => setLocation("/dashboard/onboarding")}
+                  onClick={() => setLocation(toDashboardPath(location, "onboarding"))}
                 >
                   会员中心 / 升级
                 </Button>
@@ -237,7 +249,7 @@ export default function CNHHeader() {
                     } catch (e) {
                       // ignore
                     } finally {
-                      setLocation("/login");
+                      setLocation(toLoginPath(getCurrentPathWithQueryHash()));
                     }
                   }}
                 >
@@ -253,7 +265,7 @@ export default function CNHHeader() {
                     } catch (e) {
                       // ignore
                     } finally {
-                      setLocation("/login");
+                      setLocation(toLoginPath(getCurrentPathWithQueryHash()));
                     }
                   }}
                 >
@@ -280,13 +292,6 @@ export default function CNHHeader() {
           >
             <Maximize className="h-4 w-4" />
           </Button>
-          
-          <Avatar className="h-9 w-9 border-2 border-[#FFD700] shadow-lg">
-            <AvatarImage src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" />
-            <AvatarFallback className="bg-[#0d3d16] text-white font-bold">
-              {userName.slice(0,1) || (language === 'zh' ? '用' : 'U')}
-            </AvatarFallback>
-          </Avatar>
         </div>
       </div>
 

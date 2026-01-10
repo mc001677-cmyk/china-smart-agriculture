@@ -248,6 +248,39 @@ export const appRouter = router({
         success: true,
       } as const;
     }),
+
+    /**
+     * 本地开发便捷：初始化“首个管理员”
+     * - 仅在非 production 环境启用
+     * - 仅当系统中还没有任何管理员时允许执行
+     */
+    bootstrapAdmin: protectedProcedure.mutation(async ({ ctx }) => {
+      if (process.env.NODE_ENV === "production") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "生产环境禁止初始化管理员" });
+      }
+      const db = await getDb();
+      if (!db) throw new Error("数据库不可用");
+
+      const [row] = await db
+        .select({
+          admins: sql<number>`SUM(CASE WHEN ${users.role} = 'admin' OR ${users.isAdmin} = 1 THEN 1 ELSE 0 END)`,
+        })
+        .from(users);
+      const admins = Number((row as any)?.admins ?? 0);
+      if (admins > 0) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "系统已存在管理员，禁止自助初始化" });
+      }
+
+      await db
+        .update(users)
+        .set({
+          isAdmin: 1,
+          role: "admin",
+        })
+        .where(eq(users.id, ctx.user.id));
+
+      return { success: true } as const;
+    }),
   }),
 
   // 注册/审核中心

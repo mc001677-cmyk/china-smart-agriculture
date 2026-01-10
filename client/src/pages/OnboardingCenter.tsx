@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { toDashboardPath } from "@/lib/dashboardNav";
 
 function statusLabel(s?: string) {
   switch (s) {
@@ -61,7 +62,7 @@ const MEMBERSHIP_PLANS = [
 ];
 
 export default function OnboardingCenter() {
-  const [, navigate] = useLocation();
+  const [location, navigate] = useLocation();
   const { data: me } = trpc.auth.me.useQuery();
   const { data: membershipSummary } = trpc.membership.summary.useQuery(undefined, { enabled: !!me });
   const createOrder = trpc.membership.createOrder.useMutation();
@@ -129,7 +130,7 @@ export default function OnboardingCenter() {
                     disabled={isCurrent || createOrder.isPending}
                     onClick={async () => {
                       if (plan.id === "diamond") {
-                        navigate("/dashboard/identity");
+                        navigate(toDashboardPath(location, "identity"));
                         return;
                       }
                       setMessage(null);
@@ -159,7 +160,7 @@ export default function OnboardingCenter() {
               </p>
               <Button 
                 className="w-fit rounded-full px-8 bg-[#1D1D1F] dark:bg-white text-white dark:text-[#1D1D1F] hover:opacity-90"
-                onClick={() => navigate("/dashboard/identity")}
+                onClick={() => navigate(toDashboardPath(location, "identity"))}
               >
                 立即认证 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
@@ -179,7 +180,7 @@ export default function OnboardingCenter() {
               <Button 
                 variant="outline"
                 className="w-fit rounded-full px-8 border-2 hover:bg-slate-50 "
-                onClick={() => navigate("/dashboard/machine-register")}
+                onClick={() => navigate(toDashboardPath(location, "machine-register"))}
               >
                 添加设备 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
@@ -211,7 +212,7 @@ export default function OnboardingCenter() {
               管理员控制台：
               <button 
                 className="text-primary font-medium hover:underline" 
-                onClick={() => navigate("/dashboard/admin-review")}
+                onClick={() => navigate("/admin/reviews")}
               >
                 进入审核列表
               </button>
