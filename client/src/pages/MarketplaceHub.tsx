@@ -112,8 +112,8 @@ export default function MarketplaceHub() {
       />
 
       {/* 顶部统计卡片 */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-        <Card className="bg-card border-border">
+      <div className="grid grid-cols-1 md:grid-cols-7 gap-4 mb-8">
+        <Card className="bg-card border-border md:col-span-2">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
               <TrendingUp className="h-4 w-4 text-primary" />
@@ -126,7 +126,7 @@ export default function MarketplaceHub() {
           </CardContent>
         </Card>
 
-        <Card className="bg-card border-border">
+        <Card className="bg-card border-border md:col-span-2">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
               <MapPin className="h-4 w-4 text-sky-400" />
@@ -139,7 +139,7 @@ export default function MarketplaceHub() {
           </CardContent>
         </Card>
 
-        <Card className="bg-card border-border">
+        <Card className="bg-card border-border md:col-span-2">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
               <Users className="h-4 w-4 text-violet-400" />
@@ -152,15 +152,16 @@ export default function MarketplaceHub() {
           </CardContent>
         </Card>
 
-        <Card className="bg-card border-border">
-          <CardHeader className="pb-3">
+        {/* 平台收入：缩小一半（相对前三张卡） */}
+        <Card className="bg-card border-border md:col-span-1">
+          <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
               <AlertCircle className="h-4 w-4 text-amber-400" />
               平台收入
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-foreground">¥{(stats.platformRevenue / 10000).toFixed(1)}w</div>
+          <CardContent className="pt-0">
+            <div className="text-2xl font-bold text-foreground">¥{(stats.platformRevenue / 10000).toFixed(1)}w</div>
             <p className="text-xs text-muted-foreground mt-1">1% 抽成</p>
           </CardContent>
         </Card>

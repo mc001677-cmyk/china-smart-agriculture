@@ -91,7 +91,8 @@ export function RightPanel() {
   return (
     <div 
       className={cn(
-        "fixed right-4 top-20 bottom-4 w-80 bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl border border-white/20 transition-all duration-500 ease-out z-20 flex flex-col overflow-hidden",
+        // 顶栏 CNHHeader 高度约 7rem（h-16 + h-12），原 top-20(5rem) 会被顶栏遮挡关闭按钮
+        "fixed right-4 top-28 bottom-4 w-80 bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl border border-white/20 transition-all duration-500 ease-out z-20 flex flex-col overflow-hidden",
         isOpen ? "translate-x-0 opacity-100" : "translate-x-[120%] opacity-0 pointer-events-none"
       )}
     >
